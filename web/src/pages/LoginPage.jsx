@@ -30,7 +30,7 @@ const LoginPage = () => {
     setError('');
 
     try {
-      await login(email, password);
+      await login({ email, password }); // Passe como objeto
       navigate('/dashboard');
     } catch (error) {
       setError(error.message || 'Erro ao fazer login. Verifique suas credenciais.');

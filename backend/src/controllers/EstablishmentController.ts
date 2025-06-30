@@ -12,7 +12,7 @@ export class EstablishmentController {
         .orderBy('name')
         .get();
 
-      const establishments = snapshot.docs.map(doc => ({
+      const establishments = snapshot.docs.map((doc: { id: any; data: () => any; }) => ({
         id: doc.id,
         ...doc.data()
       })) as Establishment[];
@@ -111,7 +111,7 @@ export class EstablishmentController {
           .where('isActive', '==', true)
           .get();
 
-        const conflictingEstablishment = existingEstablishment.docs.find(doc => doc.id !== id);
+        const conflictingEstablishment = existingEstablishment.docs.find((doc: { id: string; }) => doc.id !== id);
         if (conflictingEstablishment) {
           return res.status(400).json({ error: 'Já existe um estabelecimento com este nome' });
         }

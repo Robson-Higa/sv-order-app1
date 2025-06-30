@@ -222,10 +222,13 @@ const RegisterPage = () => {
                       <SelectValue placeholder="Selecione o estabelecimento" />
                     </SelectTrigger>
                     <SelectContent>
-                      {establishments.map(establishment => (
-                        <SelectItem key={establishment.id} value={establishment.id}>
-                          {establishment.name}
-                        </SelectItem>
+                      <SelectItem value="">Selecione o estabelecimento</SelectItem>
+                      {establishments
+                        .filter(e => !!e.id && String(e.id).trim() !== '')
+                        .map(establishment => (
+                          <SelectItem key={establishment.id} value={String(establishment.id)}>
+                            {establishment.name}
+                          </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

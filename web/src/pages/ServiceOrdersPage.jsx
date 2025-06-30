@@ -40,11 +40,10 @@ const ServiceOrdersPage = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [priorityFilter, setPriorityFilter] = useState('');
-  const [establishmentFilter, setEstablishmentFilter] = useState('');
-  const [technicianFilter, setTechnicianFilter] = useState('');
+ const [statusFilter, setStatusFilter] = useState('all');
+const [priorityFilter, setPriorityFilter] = useState('all');
+const [establishmentFilter, setEstablishmentFilter] = useState('all');
+const [technicianFilter, setTechnicianFilter] = useState('all');
 
   useEffect(() => {
     loadData();
@@ -80,12 +79,12 @@ const ServiceOrdersPage = () => {
   const loadOrders = async () => {
     try {
       const filters = {
-        search: searchTerm || undefined,
-        status: statusFilter || undefined,
-        priority: priorityFilter || undefined,
-        establishmentId: establishmentFilter || undefined,
-        technicianId: technicianFilter || undefined,
-      };
+  search: searchTerm || undefined,
+  status: statusFilter !== 'all' ? statusFilter : undefined,
+  priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+  establishmentId: establishmentFilter !== 'all' ? establishmentFilter : undefined,
+  technicianId: technicianFilter !== 'all' ? technicianFilter : undefined,
+};
 
       const response = await apiService.getServiceOrders(filters);
       if (response.serviceOrders) {
@@ -102,13 +101,13 @@ const ServiceOrdersPage = () => {
     setRefreshing(false);
   };
 
-  const clearFilters = () => {
-    setSearchTerm('');
-    setStatusFilter('');
-    setPriorityFilter('');
-    setEstablishmentFilter('');
-    setTechnicianFilter('');
-  };
+ const clearFilters = () => {
+  setSearchTerm('');
+  setStatusFilter('all');
+  setPriorityFilter('all');
+  setEstablishmentFilter('all');
+  setTechnicianFilter('all');
+};
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -204,11 +203,13 @@ const ServiceOrdersPage = () => {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os status</SelectItem>
-                {Object.values(ServiceOrderStatus).map(status => (
-                  <SelectItem key={status} value={status}>
-                    {getStatusText(status)}
-                  </SelectItem>
+                <SelectItem value="all">Todos os status</SelectItem>
+                {Object.values(ServiceOrderStatus)
+                  .filter(status => status && status !== '')
+                  .map(status => (
+                    <SelectItem key={status} value={status}>
+                      {getStatusText(status)}
+                    </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -218,11 +219,13 @@ const ServiceOrdersPage = () => {
                 <SelectValue placeholder="Prioridade" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas as prioridades</SelectItem>
-                {Object.values(Priority).map(priority => (
-                  <SelectItem key={priority} value={priority}>
-                    {getPriorityText(priority)}
-                  </SelectItem>
+                <SelectItem value="all">Todas as prioridades</SelectItem>
+                {Object.values(Priority)
+                  .filter(priority => priority && priority !== '')
+                  .map(priority => (
+                    <SelectItem key={priority} value={priority}>
+                      {getPriorityText(priority)}
+                    </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -232,11 +235,13 @@ const ServiceOrdersPage = () => {
                 <SelectValue placeholder="Estabelecimento" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os estabelecimentos</SelectItem>
-                {establishments.map(establishment => (
-                  <SelectItem key={establishment.id} value={establishment.id}>
-                    {establishment.name}
-                  </SelectItem>
+                <SelectItem value="all">Todos os estabelecimentos</SelectItem>
+                {establishments
+                  .filter(e => e.id && e.id !== '')
+                  .map(establishment => (
+                    <SelectItem key={establishment.id} value={establishment.id}>
+                      {establishment.name}
+                    </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -247,11 +252,13 @@ const ServiceOrdersPage = () => {
                   <SelectValue placeholder="Técnico" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os técnicos</SelectItem>
-                  {technicians.map(technician => (
-                    <SelectItem key={technician.id} value={technician.id}>
-                      {technician.name}
-                    </SelectItem>
+                  <SelectItem value="all">Todos os técnicos</SelectItem>
+                  {technicians
+                    .filter(t => t.id && t.id !== '')
+                    .map(technician => (
+                      <SelectItem key={technician.id} value={technician.id}>
+                        {technician.name}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>

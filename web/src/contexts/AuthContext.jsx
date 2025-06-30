@@ -3,35 +3,45 @@ import { apiService } from '../services/api';
 
 export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check for existing auth data on mount
-    const storedToken = localStorage.getItem('authToken');
-    const storedUser = localStorage.getItem('user');
+    useEffect(() => {
+    const storedToken = localStorage.getItem("authToken");
+    const storedUser = localStorage.getItem("user");
 
     if (storedToken && storedUser) {
       try {
+        const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        setUser(parsedUser);
+        console.log("AuthContext: Usuário e token carregados do localStorage.", parsedUser);
       } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
+        console.error("AuthContext: Erro ao analisar dados do usuário do localStorage:", error);
+        // Limpa o localStorage se houver erro para evitar loop
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("user");
+        setToken(null);
+        setUser(null);
       }
+    } else {
+      console.log("AuthContext: Nenhum usuário ou token encontrado no localStorage.");
     }
     setLoading(false);
+    console.log("AuthContext: Loading set to false.");
   }, []);
 
-  const login = async (email, password) => {
+
+  const login = async ({ email, password }) => {
     try {
       setLoading(true);
-      const response = await apiService.login(email, password);
-      
-      if (response.success && response.token && response.user) {
+      const response = await apiService.login({ email, password });
+      console.log('Resposta do login:', response);
+
+      // Aceita se vier token e user, mesmo sem success
+      if (response.token && response.user) {
         setToken(response.token);
         setUser(response.user);
         localStorage.setItem('authToken', response.token);
@@ -107,4 +117,6 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+export default AuthProvider;
 

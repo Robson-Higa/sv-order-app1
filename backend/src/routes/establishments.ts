@@ -14,7 +14,6 @@ router.get('/', establishmentController.getAllEstablishments);
 router.get('/:id', establishmentController.getEstablishmentById);
 
 // Rotas administrativas
-router.post('/', requireAdmin, validateEstablishment, establishmentController.createEstablishment);
 router.put('/:id', requireAdmin, validateEstablishment, establishmentController.updateEstablishment);
 router.delete('/:id', requireAdmin, establishmentController.deleteEstablishment);
 router.patch('/:id/deactivate', requireAdmin, establishmentController.deactivateEstablishment);

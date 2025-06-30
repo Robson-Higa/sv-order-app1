@@ -11,6 +11,10 @@ router.use(authenticateToken);
 // Dashboard principal (adaptado ao tipo de usuário)
 router.get('/', dashboardController.getDashboardData);
 
+// Novas rotas para o dashboard
+router.get('/stats', dashboardController.getStats);
+router.get('/recent-orders', dashboardController.getRecentOrders);
+
 // Relatórios (apenas admin)
 router.get('/reports', requireAdmin, dashboardController.getReports);
 

@@ -12,38 +12,28 @@ export const authenticateToken = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    res.status(401).json({ error: 'Token não fornecido' });
+    return;
+  }
+
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-      res.status(401).json({ error: 'Token de acesso requerido' });
-      return;
-    }
-
-    // Verificar se é um token JWT personalizado ou Firebase token
-    if (token.startsWith('eyJ')) {
-      // JWT personalizado
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default-secret') as any;
-      req.user = decoded.user;
-    } else {
-      // Firebase token
-      const decodedToken = await auth.verifyIdToken(token);
-      // Buscar dados do usuário no Firestore baseado no UID
-      const userDoc = await require('../config/firebase').db.collection('users').doc(decodedToken.uid).get();
-      
-      if (!userDoc.exists) {
-        res.status(401).json({ error: 'Usuário não encontrado' });
-        return;
-      }
-      
-      req.user = { id: decodedToken.uid, ...userDoc.data() } as User;
-    }
-
+    const user = await new Promise<any>((resolve, reject) => {
+      jwt.verify(token, process.env.JWT_SECRET || 'secret', (err, decoded) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(decoded);
+        }
+      });
+    });
+    (req as any).user = user;
+    // Se necessário, busque mais informações do usuário no Firestore ou em outra fonte aqui
     next();
-  } catch (error) {
-    console.error('Erro na autenticação:', error);
-    res.status(403).json({ error: 'Token inválido' });
+  } catch (err) {
+    res.status(401).json({ error: 'Token inválido' });
   }
 };
 

@@ -54,7 +54,7 @@ class AuthController {
                     return res.status(400).json({ error: 'Estabelecimento não encontrado' });
                 }
             }
-            const hashedPassword = await (0, helpers_1.hashPassword)(password);
+            const hashedPassword = await hashPassword(password);
             const userId = (0, helpers_1.generateId)();
             const newUser = {
                 id: userId,

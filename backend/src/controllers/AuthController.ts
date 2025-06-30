@@ -27,7 +27,22 @@ export class AuthController {
       }
 
       if (userData.password) {
-        const isValidPassword = await comparePassword(password, userData.password);
+        // Se a senha não for hash, faça a migração automática
+        const isHash = userData.password.startsWith('$2b$');
+        let isValidPassword = false;
+
+        if (isHash) {
+          isValidPassword = await comparePassword(password, userData.password);
+        } else {
+          // Senha em texto simples: compare diretamente e migre para hash se bater
+          isValidPassword = password === userData.password;
+          if (isValidPassword) {
+            const hashed = await hashPassword(password);
+            await userDoc.ref.update({ password: hashed });
+            console.log('Senha migrada para hash para o usuário:', email);
+          }
+        }
+
         if (!isValidPassword) {
           console.log('Senha inválida');
           return res.status(401).json({ error: 'Credenciais inválidas' });

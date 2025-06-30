@@ -12,7 +12,7 @@ router.use(authenticateToken);
 router.get('/', requireAdmin, userController.getAllUsers);
 router.get('/stats', requireAdmin, userController.getUserStats);
 router.get('/type/:userType', requireAdmin, userController.getUsersByType);
-router.get('/technicians', requireAdmin, userController.getTechnicians);
+router.get('/technicians', authenticateToken, userController.getTechnicians);
 
 // Rotas de usuário específico
 router.get('/:id', userController.getUserById);
