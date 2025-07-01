@@ -2,31 +2,37 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
-import { 
-  UserType, 
-  ServiceOrderStatus, 
-  Priority, 
-  getStatusText, 
-  getStatusColor, 
-  getPriorityText, 
-  getPriorityColor 
+import {
+  UserType,
+  ServiceOrderStatus,
+  Priority,
+  getStatusText,
+  getStatusColor,
+  getPriorityText,
+  getPriorityColor,
 } from '../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import {
+  Plus,
+  Search,
+  Filter,
+  Eye,
+  Edit,
+  Trash2,
   Clock,
   User,
   Building,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import '../App.css';
 
@@ -40,10 +46,11 @@ const ServiceOrdersPage = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   // Filters
- const [statusFilter, setStatusFilter] = useState('all');
-const [priorityFilter, setPriorityFilter] = useState('all');
-const [establishmentFilter, setEstablishmentFilter] = useState('all');
-const [technicianFilter, setTechnicianFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [establishmentFilter, setEstablishmentFilter] = useState('all');
+  const [technicianFilter, setTechnicianFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadData();
@@ -59,7 +66,9 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
       const [ordersResponse, establishmentsResponse, techniciansResponse] = await Promise.all([
         loadOrders(),
         apiService.getEstablishments(),
-        user?.userType === UserType.ADMIN ? apiService.getTechnicians() : Promise.resolve({ technicians: [] })
+        user?.userType === UserType.ADMIN
+          ? apiService.getTechnicians()
+          : Promise.resolve({ technicians: [] }),
       ]);
 
       if (establishmentsResponse.establishments) {
@@ -79,12 +88,12 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
   const loadOrders = async () => {
     try {
       const filters = {
-  search: searchTerm || undefined,
-  status: statusFilter !== 'all' ? statusFilter : undefined,
-  priority: priorityFilter !== 'all' ? priorityFilter : undefined,
-  establishmentId: establishmentFilter !== 'all' ? establishmentFilter : undefined,
-  technicianId: technicianFilter !== 'all' ? technicianFilter : undefined,
-};
+        search: searchTerm || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+        establishmentId: establishmentFilter !== 'all' ? establishmentFilter : undefined,
+        technicianId: technicianFilter !== 'all' ? technicianFilter : undefined,
+      };
 
       const response = await apiService.getServiceOrders(filters);
       if (response.serviceOrders) {
@@ -101,13 +110,13 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
     setRefreshing(false);
   };
 
- const clearFilters = () => {
-  setSearchTerm('');
-  setStatusFilter('all');
-  setPriorityFilter('all');
-  setEstablishmentFilter('all');
-  setTechnicianFilter('all');
-};
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setEstablishmentFilter('all');
+    setTechnicianFilter('all');
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -115,7 +124,7 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -151,24 +160,16 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Ordens de Serviço
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie todas as ordens de serviço do sistema
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Ordens de Serviço</h1>
+          <p className="text-gray-600 mt-1">Gerencie todas as ordens de serviço do sistema</p>
         </div>
-        
+
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
-          
+
           {canCreateOrder() && (
             <Button onClick={() => navigate('/service-orders/new')}>
               <Plus className="w-4 h-4 mr-2" />
@@ -205,12 +206,12 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
               <SelectContent>
                 <SelectItem value="all">Todos os status</SelectItem>
                 {Object.values(ServiceOrderStatus)
-                  .filter(status => status && status !== '')
-                  .map(status => (
+                  .filter((status) => status && status !== '')
+                  .map((status) => (
                     <SelectItem key={status} value={status}>
                       {getStatusText(status)}
                     </SelectItem>
-                ))}
+                  ))}
               </SelectContent>
             </Select>
 
@@ -221,12 +222,12 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
               <SelectContent>
                 <SelectItem value="all">Todas as prioridades</SelectItem>
                 {Object.values(Priority)
-                  .filter(priority => priority && priority !== '')
-                  .map(priority => (
+                  .filter((priority) => priority && priority !== '')
+                  .map((priority) => (
                     <SelectItem key={priority} value={priority}>
                       {getPriorityText(priority)}
                     </SelectItem>
-                ))}
+                  ))}
               </SelectContent>
             </Select>
 
@@ -237,12 +238,12 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
               <SelectContent>
                 <SelectItem value="all">Todos os estabelecimentos</SelectItem>
                 {establishments
-                  .filter(e => e.id && e.id !== '')
-                  .map(establishment => (
+                  .filter((e) => e.id && e.id !== '')
+                  .map((establishment) => (
                     <SelectItem key={establishment.id} value={establishment.id}>
                       {establishment.name}
                     </SelectItem>
-                ))}
+                  ))}
               </SelectContent>
             </Select>
 
@@ -254,12 +255,12 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
                 <SelectContent>
                   <SelectItem value="all">Todos os técnicos</SelectItem>
                   {technicians
-                    .filter(t => t.id && t.id !== '')
-                    .map(technician => (
+                    .filter((t) => t.id && t.id !== '')
+                    .map((technician) => (
                       <SelectItem key={technician.id} value={technician.id}>
                         {technician.name}
                       </SelectItem>
-                  ))}
+                    ))}
                 </SelectContent>
               </Select>
             )}
@@ -279,9 +280,7 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
           <Card>
             <CardContent className="text-center py-12">
               <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Nenhuma ordem encontrada
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma ordem encontrada</h3>
               <p className="text-gray-600 mb-4">
                 Não há ordens de serviço que correspondam aos filtros selecionados.
               </p>
@@ -300,9 +299,7 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {order.title}
-                      </h3>
+                      <h3 className="text-lg font-semibold text-gray-900">{order.title}</h3>
                       <Badge className={getStatusColor(order.status)}>
                         {getStatusText(order.status)}
                       </Badge>
@@ -310,24 +307,22 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
                         {getPriorityText(order.priority)}
                       </Badge>
                     </div>
-                    
-                    <p className="text-gray-600 mb-3">
-                      {order.description}
-                    </p>
+
+                    <p className="text-gray-600 mb-3">{order.description}</p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
                         <span>Criada: {formatDate(order.createdAt)}</span>
                       </div>
-                      
+
                       {order.establishment && (
                         <div className="flex items-center gap-2">
                           <Building className="w-4 h-4" />
                           <span>ESF: {order.establishment.name}</span>
                         </div>
                       )}
-                      
+
                       {order.technician && (
                         <div className="flex items-center gap-2">
                           <User className="w-4 h-4" />
@@ -342,17 +337,15 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
                           <span className="text-sm text-gray-500">Avaliação:</span>
                           <div className="flex">
                             {[...Array(5)].map((_, i) => (
-                              <span 
-                                key={i} 
+                              <span
+                                key={i}
                                 className={`text-sm ${i < order.userRating ? 'text-yellow-400' : 'text-gray-300'}`}
                               >
                                 ★
                               </span>
                             ))}
                           </div>
-                          <span className="text-sm text-gray-500">
-                            ({order.userRating}/5)
-                          </span>
+                          <span className="text-sm text-gray-500">({order.userRating}/5)</span>
                         </div>
                       </div>
                     )}
@@ -366,7 +359,7 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
-                    
+
                     {canEditOrder(order) && (
                       <Button
                         variant="outline"
@@ -376,7 +369,7 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
                         <Edit className="w-4 h-4" />
                       </Button>
                     )}
-                    
+
                     {user?.userType === UserType.ADMIN && (
                       <Button
                         variant="outline"
@@ -409,4 +402,3 @@ const [technicianFilter, setTechnicianFilter] = useState('all');
 };
 
 export default ServiceOrdersPage;
-

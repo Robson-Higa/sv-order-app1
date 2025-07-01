@@ -117,13 +117,28 @@ export class ServiceOrderController {
 
   async createServiceOrder(req: AuthRequest, res: Response) {
     try {
-      const { title, description, establishmentId, priority, scheduledDate }: CreateServiceOrderRequest = req.body;
+      const { title, description, priority, scheduledDate }: CreateServiceOrderRequest = req.body;
+      let { establishmentId } = req.body;
 
-      if (req.user?.userType !== UserType.END_USER && req.user?.userType !== UserType.ADMIN) {
-        return res.status(403).json({ error: 'Apenas usuários finais podem criar ordens de serviço' });
+      // Preenche establishmentId automaticamente para END_USER
+      if (req.user?.userType === UserType.END_USER) {
+        establishmentId = req.user.establishmentId;
       }
 
-      // Verificar se o estabelecimento existe
+      // Validação: establishmentId é obrigatório
+      if (!establishmentId) {
+        return res.status(400).json({ error: 'Estabelecimento não informado' });
+      }
+
+      // Apenas usuários finais ou administradores podem criar ordens
+      if (
+        req.user?.userType !== UserType.END_USER &&
+        req.user?.userType !== UserType.ADMIN
+      ) {
+        return res.status(403).json({ error: 'Apenas usuários finais ou administradores podem criar ordens de serviço' });
+      }
+
+      // Verifica se o estabelecimento existe
       const establishmentDoc = await db.collection('establishments').doc(establishmentId).get();
       if (!establishmentDoc.exists) {
         return res.status(400).json({ error: 'Estabelecimento não encontrado' });
@@ -156,7 +171,7 @@ export class ServiceOrderController {
       return;
     } catch (error) {
       console.error('Erro ao criar ordem de serviço:', error);
-      res.status(500).json({ error: 'Erro interno do servidor' });
+      res.status(500).json({ error: 'Erro interno do servidor', details: error instanceof Error ? error.message : error });
       return;
     }
   }

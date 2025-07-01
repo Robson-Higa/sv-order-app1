@@ -6,7 +6,7 @@ import { generateId } from '../utils/helpers';
 export class EstablishmentController {
   async getAllEstablishments(req: AuthRequest, res: Response) {
     try {
-      const establishmentsRef = db.collection('establishments');
+      const establishmentsRef = db.collection('establishment');
       const snapshot = await establishmentsRef
         .where('isActive', '==', true)
         .orderBy('name')
@@ -28,7 +28,7 @@ export class EstablishmentController {
     try {
       const { id } = req.params;
 
-      const establishmentDoc = await db.collection('establishments').doc(id).get();
+      const establishmentDoc = await db.collection('establishment').doc(id).get();
 
       if (!establishmentDoc.exists) {
         return res.status(404).json({ error: 'Estabelecimento não encontrado' });

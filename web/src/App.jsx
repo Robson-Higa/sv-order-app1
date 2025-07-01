@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ServiceOrdersPage from './pages/ServiceOrdersPage';
+import ServiceOrderCreatePage from './pages/ServiceOrderCreatePage';
 
 import './App.css';
 
@@ -46,65 +47,71 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route 
-        path="/login" 
+      <Route
+        path="/login"
         element={
           <PublicRoute>
             <LoginPage />
           </PublicRoute>
-        } 
+        }
       />
-      <Route 
-        path="/register" 
+      <Route
+        path="/register"
         element={
           <PublicRoute>
             <RegisterPage />
           </PublicRoute>
-        } 
+        }
       />
 
       {/* Protected Routes */}
-      <Route 
-        path="/dashboard" 
+      <Route
+        path="/dashboard"
         element={
           <ProtectedRoute>
             <Layout>
               <DashboardPage />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/service-orders" 
+      <Route
+        path="/service-orders"
         element={
           <ProtectedRoute>
             <Layout>
               <ServiceOrdersPage />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
+      />
+      <Route
+        path="/service-orders/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ServiceOrderCreatePage />
+            </Layout>
+          </ProtectedRoute>
+        }
       />
 
       {/* Placeholder routes for other pages */}
-      <Route 
-        path="/users" 
+      <Route
+        path="/users"
         element={
           <ProtectedRoute>
             <Layout>
               <div className="text-center py-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  Página de Usuários
-                </h2>
-                <p className="text-gray-600">
-                  Esta página está em desenvolvimento.
-                </p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Página de Usuários</h2>
+                <p className="text-gray-600">Esta página está em desenvolvimento.</p>
               </div>
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/establishments" 
+      <Route
+        path="/establishments"
         element={
           <ProtectedRoute>
             <Layout>
@@ -112,69 +119,56 @@ const AppRoutes = () => {
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
                   Página de Estabelecimentos
                 </h2>
-                <p className="text-gray-600">
-                  Esta página está em desenvolvimento.
-                </p>
+                <p className="text-gray-600">Esta página está em desenvolvimento.</p>
               </div>
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/reports" 
+      <Route
+        path="/reports"
         element={
           <ProtectedRoute>
             <Layout>
               <div className="text-center py-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  Página de Relatórios
-                </h2>
-                <p className="text-gray-600">
-                  Esta página está em desenvolvimento.
-                </p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Página de Relatórios</h2>
+                <p className="text-gray-600">Esta página está em desenvolvimento.</p>
               </div>
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/profile" 
+      <Route
+        path="/profile"
         element={
           <ProtectedRoute>
             <Layout>
               <div className="text-center py-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  Página de Perfil
-                </h2>
-                <p className="text-gray-600">
-                  Esta página está em desenvolvimento.
-                </p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Página de Perfil</h2>
+                <p className="text-gray-600">Esta página está em desenvolvimento.</p>
               </div>
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Default redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      
+
       {/* 404 Route */}
-      <Route 
-        path="*" 
+      <Route
+        path="*"
         element={
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
               <p className="text-gray-600 mb-4">Página não encontrada</p>
-              <a 
-                href="/dashboard" 
-                className="text-blue-600 hover:text-blue-500 font-medium"
-              >
+              <a href="/dashboard" className="text-blue-600 hover:text-blue-500 font-medium">
                 Voltar ao Dashboard
               </a>
             </div>
           </div>
-        } 
+        }
       />
     </Routes>
   );
@@ -194,4 +188,3 @@ function App() {
 }
 
 export default App;
-

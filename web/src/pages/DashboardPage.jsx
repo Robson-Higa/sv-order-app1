@@ -5,16 +5,16 @@ import { UserType, getStatusText, getStatusColor } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { 
-  ClipboardList, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  Users, 
-  Building, 
+import {
+  ClipboardList,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Users,
+  Building,
   TrendingUp,
   AlertCircle,
-  Plus
+  Plus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../App.css';
@@ -35,7 +35,7 @@ const DashboardPage = () => {
       setLoading(true);
       const [statsResponse, recentResponse] = await Promise.all([
         apiService.getDashboardStats(),
-        apiService.getRecentOrders()
+        apiService.getRecentOrders(),
       ]);
 
       if (statsResponse.stats) {
@@ -68,29 +68,29 @@ const DashboardPage = () => {
         value: stats.totalOrders || 0,
         icon: ClipboardList,
         color: 'text-blue-600',
-        bgColor: 'bg-blue-50'
+        bgColor: 'bg-blue-50',
       },
       {
         title: 'Em Aberto',
         value: stats.openOrders || 0,
         icon: Clock,
         color: 'text-yellow-600',
-        bgColor: 'bg-yellow-50'
+        bgColor: 'bg-yellow-50',
       },
       {
         title: 'Em Progresso',
         value: stats.inProgressOrders || 0,
         icon: AlertCircle,
         color: 'text-orange-600',
-        bgColor: 'bg-orange-50'
+        bgColor: 'bg-orange-50',
       },
       {
         title: 'Concluídas',
         value: stats.completedOrders || 0,
         icon: CheckCircle,
         color: 'text-green-600',
-        bgColor: 'bg-green-50'
-      }
+        bgColor: 'bg-green-50',
+      },
     ];
 
     if (user?.userType === UserType.ADMIN) {
@@ -100,14 +100,14 @@ const DashboardPage = () => {
           value: stats.totalUsers || 0,
           icon: Users,
           color: 'text-purple-600',
-          bgColor: 'bg-purple-50'
+          bgColor: 'bg-purple-50',
         },
         {
           title: 'Estabelecimentos',
           value: stats.totalEstablishments || 0,
           icon: Building,
           color: 'text-indigo-600',
-          bgColor: 'bg-indigo-50'
+          bgColor: 'bg-indigo-50',
         }
       );
     }
@@ -118,7 +118,7 @@ const DashboardPage = () => {
         value: stats.assignedOrders || 0,
         icon: TrendingUp,
         color: 'text-blue-600',
-        bgColor: 'bg-blue-50'
+        bgColor: 'bg-blue-50',
       });
     }
 
@@ -131,7 +131,7 @@ const DashboardPage = () => {
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -159,11 +159,9 @@ const DashboardPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">
             {getGreeting()}, {user?.name?.split(' ')[0]}!
           </h1>
-          <p className="text-gray-600 mt-1">
-            Aqui está um resumo das suas atividades
-          </p>
+          <p className="text-gray-600 mt-1">Aqui está um resumo das suas atividades</p>
         </div>
-        
+
         {user?.userType === UserType.END_USER && (
           <Button onClick={() => navigate('/service-orders/new')}>
             <Plus className="w-4 h-4 mr-2" />
@@ -181,12 +179,8 @@ const DashboardPage = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      {card.title}
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      {card.value}
-                    </p>
+                    <p className="text-sm font-medium text-gray-600">{card.title}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-2">{card.value}</p>
                   </div>
                   <div className={`p-3 rounded-full ${card.bgColor}`}>
                     <Icon className={`w-6 h-6 ${card.color}`} />
@@ -204,14 +198,9 @@ const DashboardPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Ordens Recentes</CardTitle>
-              <CardDescription>
-                Últimas ordens de serviço do sistema
-              </CardDescription>
+              <CardDescription>Últimas ordens de serviço do sistema</CardDescription>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/service-orders')}
-            >
+            <Button variant="outline" onClick={() => navigate('/service-orders')}>
               Ver todas
             </Button>
           </div>
@@ -225,16 +214,14 @@ const DashboardPage = () => {
           ) : (
             <div className="space-y-4">
               {recentOrders.slice(0, 5).map((order) => (
-                <div 
-                  key={order.id} 
+                <div
+                  key={order.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => navigate(`/service-orders/${order.id}`)}
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h4 className="font-medium text-gray-900">
-                        {order.title}
-                      </h4>
+                      <h4 className="font-medium text-gray-900">{order.title}</h4>
                       <Badge className={getStatusColor(order.status)}>
                         {getStatusText(order.status)}
                       </Badge>
@@ -244,19 +231,9 @@ const DashboardPage = () => {
                       {order.description?.length > 100 && '...'}
                     </p>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>
-                        Criada em: {formatDate(order.createdAt)}
-                      </span>
-                      {order.establishment && (
-                        <span>
-                          ESF: {order.establishment.name}
-                        </span>
-                      )}
-                      {order.technician && (
-                        <span>
-                          Técnico: {order.technician.name}
-                        </span>
-                      )}
+                      <span>Criada em: {formatDate(order.createdAt)}</span>
+                      {order.establishment && <span>ESF: {order.establishment.name}</span>}
+                      {order.technician && <span>Técnico: {order.technician.name}</span>}
                     </div>
                   </div>
                 </div>
@@ -268,12 +245,13 @@ const DashboardPage = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/service-orders')}>
+        <Card
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => navigate('/service-orders')}
+        >
           <CardContent className="p-6 text-center">
             <ClipboardList className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900 mb-1">
-              Gerenciar Ordens
-            </h3>
+            <h3 className="font-medium text-gray-900 mb-1">Gerenciar Ordens</h3>
             <p className="text-sm text-gray-600">
               Visualizar e gerenciar todas as ordens de serviço
             </p>
@@ -282,42 +260,39 @@ const DashboardPage = () => {
 
         {user?.userType === UserType.ADMIN && (
           <>
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/users')}>
+            <Card
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate('/users')}
+            >
               <CardContent className="p-6 text-center">
                 <Users className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                <h3 className="font-medium text-gray-900 mb-1">
-                  Gerenciar Usuários
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Adicionar e gerenciar usuários do sistema
-                </p>
+                <h3 className="font-medium text-gray-900 mb-1">Gerenciar Usuários</h3>
+                <p className="text-sm text-gray-600">Adicionar e gerenciar usuários do sistema</p>
               </CardContent>
             </Card>
 
-            <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/reports')}>
+            <Card
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate('/reports')}
+            >
               <CardContent className="p-6 text-center">
                 <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-3" />
-                <h3 className="font-medium text-gray-900 mb-1">
-                  Relatórios
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Visualizar relatórios e análises do sistema
-                </p>
+                <h3 className="font-medium text-gray-900 mb-1">Relatórios</h3>
+                <p className="text-sm text-gray-600">Visualizar relatórios e análises do sistema</p>
               </CardContent>
             </Card>
           </>
         )}
 
         {user?.userType === UserType.END_USER && (
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/service-orders/new')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigate('/service-orders/new')}
+          >
             <CardContent className="p-6 text-center">
               <Plus className="w-8 h-8 text-green-600 mx-auto mb-3" />
-              <h3 className="font-medium text-gray-900 mb-1">
-                Nova Ordem
-              </h3>
-              <p className="text-sm text-gray-600">
-                Criar uma nova ordem de serviço
-              </p>
+              <h3 className="font-medium text-gray-900 mb-1">Nova Ordem</h3>
+              <p className="text-sm text-gray-600">Criar uma nova ordem de serviço</p>
             </CardContent>
           </Card>
         )}
@@ -327,4 +302,3 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
-
