@@ -10,7 +10,7 @@ router.use(authenticateToken);
 
 
 // Rotas administrativas
-router.get('/technicians', authenticateToken, userController.getTechnicians);
+router.get('/technicians', requireAdmin, userController.getTechnicians);
 router.get('/', requireAdmin, userController.getAllUsers);
 router.get('/stats', requireAdmin, userController.getUserStats);
 router.get('/type/:userType', requireAdmin, userController.getUsersByType);
