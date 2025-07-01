@@ -38,7 +38,7 @@ function UserInfo({ user }) {
 }
 
 const ServiceOrderCreatePage = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
 
   // Estados do formulário
@@ -55,25 +55,36 @@ const ServiceOrderCreatePage = () => {
 
   // Carregar estabelecimentos e técnicos se for admin
   useEffect(() => {
-    console.log('useEffect executado', user);
     async function fetchData() {
       if (String(user?.userType).toLowerCase() === 'admin') {
         try {
-          const res = await fetch('/api/establishments');
-          const data = await res.json();
-          console.log('Estabelecimentos recebidos:', data);
-          setEstablishments(data.establishments || []);
+          const headers = {
+            Authorization: `Bearer ${token}`,
+          };
 
-          const techRes = await fetch('/api/technicians');
-          const techData = await techRes.json();
-          setTechnicians(techData.technicians || []);
+          // URL base — certifique-se de que está vindo do .env e que está correto
+          const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+          // Buscar estabelecimentos
+          const resEstablishments = await fetch(`${baseURL}/api/establishments`, { headers });
+          if (!resEstablishments.ok) throw new Error('Erro ao buscar estabelecimentos');
+          const dataEstablishments = await resEstablishments.json();
+          setEstablishments(dataEstablishments.establishments || []);
+
+          // Buscar técnicos
+          const resTechnicians = await fetch(`${baseURL}/api/users/technicians`, { headers });
+          if (!resTechnicians.ok) throw new Error('Erro ao buscar técnicos');
+          const dataTechnicians = await resTechnicians.json();
+          setTechnicians(dataTechnicians.technicians || []);
         } catch (err) {
+          console.error('Erro ao buscar estabelecimentos ou técnicos:', err);
           setEstablishments([]);
           setTechnicians([]);
         }
       }
     }
-    fetchData();
+
+    fetchData(); // <- Aqui você chama a função
   }, [user]);
 
   const handleSubmit = async (e) => {
@@ -150,14 +161,14 @@ const ServiceOrderCreatePage = () => {
           {(user?.userType === 'ADMIN' || user?.userType === 'admin') && (
             <>
               <div>
-                <label className="block font-medium mb-1">Buscar Estabelecimento</label>
+                {/* <label className="block font-medium mb-1">Buscar Estabelecimento</label>
                 <input
                   className="border rounded w-full p-2 mb-2"
                   type="text"
                   placeholder="Digite o nome do estabelecimento"
                   value={searchEstablishment}
                   onChange={(e) => setSearchEstablishment(e.target.value)}
-                />
+                />*/}
                 <label className="block font-medium mb-1">Estabelecimento</label>
                 <select
                   className="border rounded w-full p-2"

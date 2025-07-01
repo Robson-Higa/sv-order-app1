@@ -9,6 +9,7 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import establishmentRoutes from './routes/establishments';
 import serviceOrderRoutes from './routes/serviceOrders';
+import dashboardRoutes from './routes/dashboard';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/establishments', establishmentRoutes);
 app.use('/api/service-orders', serviceOrderRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Rota de health check
 app.get('/health', (req, res) => {

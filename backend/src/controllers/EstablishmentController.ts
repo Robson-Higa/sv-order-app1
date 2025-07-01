@@ -4,24 +4,39 @@ import { Establishment, UserType, AuthRequest } from '../types';
 import { generateId } from '../utils/helpers';
 
 export class EstablishmentController {
-  async getAllEstablishments(req: AuthRequest, res: Response) {
-    try {
-      const establishmentsRef = db.collection('establishment');
-      const snapshot = await establishmentsRef
-        .where('isActive', '==', true)
-        .orderBy('name')
-        .get();
+ async getAllEstablishments(req: AuthRequest, res: Response) {
+  try {
+    const establishmentsRef = db.collection('establishments');
+    const snapshot = await establishmentsRef
+      .where('isActive', '==', true)
+      .orderBy('name')
+      .get();
 
-      const establishments = snapshot.docs.map((doc: { id: any; data: () => any; }) => ({
+    const establishments = snapshot.docs.map(doc => {
+      const data = doc.data();
+
+      return {
         id: doc.id,
-        ...doc.data()
-      })) as Establishment[];
+        name: data.name,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+        isActive: data.isActive,
+        createdAt: data.createdAt
+          ? new Date(data.createdAt._seconds * 1000).toISOString()
+          : null,
+        updatedAt: data.updatedAt
+          ? new Date(data.updatedAt._seconds * 1000).toISOString()
+          : null,
+      };
+    });
 
-      res.json({ establishments });
-    } catch (error) {
-      console.error('Erro ao buscar estabelecimentos:', error);
-      res.status(500).json({ error: 'Erro interno do servidor' });
-    }
+    res.json({ establishments });
+  } catch (error) {
+    console.error('Erro ao buscar estabelecimentos:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+
   }
 
   async getEstablishmentById(req: AuthRequest, res: Response) {
