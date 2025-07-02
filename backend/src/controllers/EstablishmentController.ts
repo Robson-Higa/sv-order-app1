@@ -15,6 +15,7 @@ export class EstablishmentController {
     const establishments = snapshot.docs.map(doc => {
       const data = doc.data();
 
+
       return {
         id: doc.id,
         name: data.name,
@@ -31,6 +32,7 @@ export class EstablishmentController {
       };
     });
 
+    console.log('Estabelecimentos retornados:', establishments);
     res.json({ establishments });
   } catch (error) {
     console.error('Erro ao buscar estabelecimentos:', error);

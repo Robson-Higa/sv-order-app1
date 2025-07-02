@@ -48,16 +48,16 @@ export class ServiceOrderController {
       const enrichedOrders = await Promise.all(
         serviceOrders.map(async (order) => {
           const [userDoc, technicianDoc, establishmentDoc] = await Promise.all([
-            db.collection('users').doc(order.userId).get(),
+            order.userId ? db.collection('users').doc(order.userId).get() : null,
             order.technicianId ? db.collection('users').doc(order.technicianId).get() : null,
-            db.collection('establishments').doc(order.establishmentId).get()
+            order.establishmentId ? db.collection('establishments').doc(order.establishmentId).get() : null
           ]);
 
           return {
             ...order,
-            user: userDoc.exists ? { id: userDoc.id, name: userDoc.data()?.name } : null,
-            technician: technicianDoc?.exists ? { id: technicianDoc.id, name: technicianDoc.data()?.name } : null,
-            establishment: establishmentDoc.exists ? { id: establishmentDoc.id, name: establishmentDoc.data()?.name } : null
+            user: userDoc && userDoc.exists ? { id: userDoc.id, name: userDoc.data()?.name } : null,
+            technician: technicianDoc && technicianDoc.exists ? { id: technicianDoc.id, name: technicianDoc.data()?.name } : null,
+            establishment: establishmentDoc && establishmentDoc.exists ? { id: establishmentDoc.id, name: establishmentDoc.data()?.name } : null
           };
         })
       );
@@ -94,16 +94,16 @@ export class ServiceOrderController {
 
       // Buscar informações adicionais
       const [userDoc, technicianDoc, establishmentDoc] = await Promise.all([
-        db.collection('users').doc(serviceOrder.userId).get(),
+        serviceOrder.userId ? db.collection('users').doc(serviceOrder.userId).get() : null,
         serviceOrder.technicianId ? db.collection('users').doc(serviceOrder.technicianId).get() : null,
-        db.collection('establishments').doc(serviceOrder.establishmentId).get()
+        serviceOrder.establishmentId ? db.collection('establishments').doc(serviceOrder.establishmentId).get() : null
       ]);
 
       const enrichedOrder = {
         ...serviceOrder,
-        user: userDoc.exists ? { id: userDoc.id, name: userDoc.data()?.name, email: userDoc.data()?.email } : null,
-        technician: technicianDoc?.exists ? { id: technicianDoc.id, name: technicianDoc.data()?.name, email: technicianDoc.data()?.email } : null,
-        establishment: establishmentDoc.exists ? { id: establishmentDoc.id, name: establishmentDoc.data()?.name, address: establishmentDoc.data()?.address } : null
+        user: userDoc && userDoc.exists ? { id: userDoc.id, name: userDoc.data()?.name, email: userDoc.data()?.email } : null,
+        technician: technicianDoc && technicianDoc.exists ? { id: technicianDoc.id, name: technicianDoc.data()?.name, email: technicianDoc.data()?.email } : null,
+        establishment: establishmentDoc && establishmentDoc.exists ? { id: establishmentDoc.id, name: establishmentDoc.data()?.name, address: establishmentDoc.data()?.address } : null
       };
 
       res.json({ serviceOrder: enrichedOrder });
@@ -117,49 +117,60 @@ export class ServiceOrderController {
 
   async createServiceOrder(req: AuthRequest, res: Response) {
     try {
-      const { title, description, priority, scheduledDate }: CreateServiceOrderRequest = req.body;
-      let { establishmentId } = req.body;
+      const { title, description, priority, establishmentName, technicianName, scheduledAt } = req.body;
 
-      // Preenche establishmentId automaticamente para END_USER
-      if (req.user?.userType === UserType.END_USER) {
-        establishmentId = req.user.establishmentId;
+      console.log('Payload recebido:', req.body);
+
+      // Validação dos campos obrigatórios
+      if (!title || !description || !establishmentName || !priority || !technicianName) {
+        return res.status(400).json({ error: 'Campos obrigatórios: title, description, establishmentName, priority, technicianName' });
       }
 
-      // Validação: establishmentId é obrigatório
-      if (!establishmentId) {
-        return res.status(400).json({ error: 'Estabelecimento não informado' });
+      // Buscar ou criar estabelecimento pelo nome
+      let establishmentId: string | undefined;
+      let establishmentDoc = await db.collection('establishments')
+        .where('name', '==', establishmentName)
+        .limit(1)
+        .get();
+
+      if (!establishmentDoc.empty) {
+        establishmentId = establishmentDoc.docs[0].id;
+      } else {
+        // Cria novo estabelecimento se não existir
+        const newEstablishmentRef = db.collection('establishments').doc();
+        await newEstablishmentRef.set({ name: establishmentName });
+        establishmentId = newEstablishmentRef.id;
       }
 
-      // Apenas usuários finais ou administradores podem criar ordens
-      if (
-        req.user?.userType !== UserType.END_USER &&
-        req.user?.userType !== UserType.ADMIN
-      ) {
-        return res.status(403).json({ error: 'Apenas usuários finais ou administradores podem criar ordens de serviço' });
-      }
+      // Buscar técnico pelo nome
+      let technicianId: string | undefined;
+      let technicianDoc = await db.collection('users')
+        .where('name', '==', technicianName)
+        .where('userType', '==', UserType.TECHNICIAN)
+        .limit(1)
+        .get();
 
-      // Verifica se o estabelecimento existe
-      const establishmentDoc = await db.collection('establishments').doc(establishmentId).get();
-      if (!establishmentDoc.exists) {
-        return res.status(400).json({ error: 'Estabelecimento não encontrado' });
+      if (!technicianDoc.empty) {
+        technicianId = technicianDoc.docs[0].id;
+      } else {
+        return res.status(400).json({ error: 'Técnico não encontrado pelo nome informado' });
       }
 
       const serviceOrderId = generateId();
       const orderNumber = generateOrderNumber();
 
-      const newServiceOrder: ServiceOrder = {
+      const newServiceOrder: Partial<ServiceOrder> = {
         id: serviceOrderId,
         orderNumber,
-        userId: req.user!.id,
-        establishmentId,
         title,
         description,
+        priority,
+        establishmentId,
+        technicianId,
         status: ServiceOrderStatus.OPEN,
-        priority: priority || Priority.MEDIUM,
         createdAt: new Date(),
         updatedAt: new Date(),
-        scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
-        userConfirmed: false
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
       };
 
       await db.collection('serviceOrders').doc(serviceOrderId).set(newServiceOrder);
@@ -208,13 +219,13 @@ export class ServiceOrderController {
         if (updateData.description) updates.description = updateData.description;
         if (updateData.status) updates.status = updateData.status;
         if (updateData.priority) updates.priority = updateData.priority;
-        if (updateData.scheduledDate) updates.scheduledDate = new Date(updateData.scheduledDate);
+        if (updateData.scheduledAt) updates.scheduledAt = new Date(updateData.scheduledAt);
         if (updateData.technicianNotes) updates.technicianNotes = updateData.technicianNotes;
       } else if (req.user?.userType === UserType.TECHNICIAN) {
         if (updateData.status && [ServiceOrderStatus.IN_PROGRESS, ServiceOrderStatus.COMPLETED].includes(updateData.status)) {
           updates.status = updateData.status;
           if (updateData.status === ServiceOrderStatus.COMPLETED) {
-            updates.completedDate = new Date();
+            updates.completedAt = new Date();
           }
         }
         if (updateData.technicianNotes) updates.technicianNotes = updateData.technicianNotes;
@@ -224,7 +235,7 @@ export class ServiceOrderController {
         
         // Usuário pode confirmar o serviço apenas se estiver completo
         if (serviceOrder.status === ServiceOrderStatus.COMPLETED && updateData.userFeedback && updateData.userRating) {
-          updates.userConfirmed = true;
+          updates.useConfimed = true;
           updates.status = ServiceOrderStatus.CONFIRMED;
         }
       }

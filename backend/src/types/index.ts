@@ -32,23 +32,28 @@ export interface Establishment {
 
 export interface ServiceOrder {
   id: string;
-  orderNumber?: string;
-  userId: string;
-  technicianId?: string;
-  establishmentId: string;
+  orderNumber: string;
   title: string;
   description: string;
-  status: ServiceOrderStatus;
   priority: Priority;
+  status: ServiceOrderStatus;
+  establishmentId?: string;
+  establishmentName: string;
+  technicianId?: string;
+  technicianName: string;
+  userId?: string;
+  userName?: string;
   createdAt: Date;
   updatedAt: Date;
-  scheduledDate?: Date;
-  completedDate?: Date;
+  completedAt?: Date;
+  confirmedAt?: Date;
+  scheduledAt?: Date; // Novo campo para agendamento do atendimento
   technicianNotes?: string;
   userFeedback?: string;
   userRating?: number;
-  userConfirmed: boolean;
   cancellationReason?: string;
+  feedback?: string;
+  useConfimed?: boolean;
 }
 
 export enum ServiceOrderStatus {
@@ -86,9 +91,10 @@ export interface RegisterRequest {
 export interface CreateServiceOrderRequest {
   title: string;
   description: string;
-  establishmentId: string;
   priority: Priority;
-  scheduledDate?: Date;
+  establishmentName: string;
+  technicianName: string;
+  scheduledAt?: Date; // Atualizado para scheduledAt
 }
 
 export interface UpdateServiceOrderRequest {
@@ -96,7 +102,7 @@ export interface UpdateServiceOrderRequest {
   description?: string;
   status?: ServiceOrderStatus;
   priority?: Priority;
-  scheduledDate?: Date;
+  scheduledAt?: Date; // Atualizado para scheduledAt
   technicianNotes?: string;
   userFeedback?: string;
   userRating?: number;

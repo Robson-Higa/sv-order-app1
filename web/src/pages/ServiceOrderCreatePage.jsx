@@ -47,6 +47,8 @@ const ServiceOrderCreatePage = () => {
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // No topo do componente ServiceOrderCreatePage.jsx
+  const [scheduledAt, setScheduledAt] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -87,8 +89,9 @@ const ServiceOrderCreatePage = () => {
         title,
         description,
         priority,
-        establishment: { name: establishmentName },
-        technician: { name: technicianName },
+        establishmentName,
+        technicianName,
+        ...(scheduledAt && { scheduledAt }), // só envia se preenchido
       };
 
       const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -136,6 +139,14 @@ const ServiceOrderCreatePage = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Descreva o problema ou solicitação"
+            />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Agendar para:</label>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
             />
           </div>
           <div>

@@ -47,25 +47,11 @@ export const validateRegister = [
 ];
 
 export const validateServiceOrder = [
-  body('title')
-    .isLength({ min: 3, max: 100 })
-    .withMessage('Título deve ter entre 3 e 100 caracteres')
-    .trim(),
-  body('description')
-    .isLength({ min: 10, max: 1000 })
-    .withMessage('Descrição deve ter entre 10 e 1000 caracteres')
-    .trim(),
-  body('establishmentId')
-    .isString()
-    .withMessage('ID do estabelecimento é obrigatório'),
-  body('priority')
-    .isIn(Object.values(Priority))
-    .withMessage('Prioridade inválida'),
-  body('scheduledDate')
-    .optional()
-    .isISO8601()
-    .withMessage('Data deve estar no formato ISO 8601'),
-  handleValidationErrors
+  body('title').notEmpty().withMessage('Título é obrigatório'),
+  body('description').notEmpty().withMessage('Descrição é obrigatória'),
+  body('priority').notEmpty().withMessage('Prioridade é obrigatória'),
+  body('establishmentName').notEmpty().withMessage('Nome do estabelecimento é obrigatório'),
+  body('technicianName').notEmpty().withMessage('Nome do técnico é obrigatório'),
 ];
 
 export const validateEstablishment = [
