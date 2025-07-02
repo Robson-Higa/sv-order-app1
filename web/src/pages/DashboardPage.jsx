@@ -27,7 +27,19 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDashboardData();
+    const token = localStorage.getItem('token');
+
+    async function fetchDashboard() {
+      const response = await fetch('/api/dashboard/stats', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      setDashboardData(data); // <-- Esse setDashboardData nem existe
+    }
+
+    fetchDashboard();
   }, []);
 
   const loadDashboardData = async () => {
