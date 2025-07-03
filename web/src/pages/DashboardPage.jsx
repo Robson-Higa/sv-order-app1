@@ -27,31 +27,30 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-
-    async function fetchDashboard() {
-      const response = await fetch('/api/dashboard/stats', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      setDashboardData(data); // <-- Esse setDashboardData nem existe
-    }
-
-    fetchDashboard();
+    loadDashboardData();
   }, []);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+
       const [statsResponse, recentResponse] = await Promise.all([
         apiService.getDashboardStats(),
         apiService.getRecentOrders(),
       ]);
 
+      // Ajuste o mapeamento conforme o que seu backend retorna
       if (statsResponse.stats) {
-        setStats(statsResponse.stats);
+        const stats = statsResponse.stats;
+        setStats({
+          totalOrders: stats.total || 0,
+          openOrders: stats.open || 0,
+          assignedOrders: stats.assigned || 0,
+          inProgressOrders: stats.inProgress || 0,
+          completedOrders: stats.completed || 0,
+          totalUsers: stats.totalUsers || 0,
+          totalEstablishments: stats.totalEstablishments || 0,
+        });
       }
 
       if (recentResponse.recentOrders) {
