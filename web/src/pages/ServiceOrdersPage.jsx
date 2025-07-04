@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
@@ -36,39 +36,83 @@ import {
 } from 'lucide-react';
 import '../App.css';
 
+// Tipos para seus dados (substitua pelos seus tipos reais)
+type ServiceOrderType = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  createdAt: string;
+  establishment?: { id: string; name: string };
+  technician?: { id: string; name: string };
+  userId?: string;
+  technicianId?: string;
+  userRating?: number;
+};
+
+type EstablishmentType = {
+  id: string;
+  name: string;
+};
+
+type TechnicianType = {
+  id: string;
+  name: string;
+};
+
 const ServiceOrdersPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
-  const [establishments, setEstablishments] = useState([]);
-  const [technicians, setTechnicians] = useState([]);
+
+  const [orders, setOrders] = useState<ServiceOrderType[]>([]);
+  const [establishments, setEstablishments] = useState<EstablishmentType[]>([]);
+  const [technicians, setTechnicians] = useState<TechnicianType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   // Filters
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  const [establishmentFilter, setEstablishmentFilter] = useState('all');
-  const [technicianFilter, setTechnicianFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [establishmentFilter, setEstablishmentFilter] = useState<string>('all');
+  const [technicianFilter, setTechnicianFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Função para carregar ordens com filtros atualizados
+  const loadOrders = useCallback(async () => {
+    try {
+      const filters = {
+        search: searchTerm || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+        // Atenção: enviando nomes em vez de ids para combinar com backend atualizado
+        establishment:
+          establishmentFilter !== 'all'
+            ? establishments.find((e) => e.id === establishmentFilter)?.name
+            : undefined,
+        technician:
+          technicianFilter !== 'all'
+            ? technicians.find((t) => t.id === technicianFilter)?.name
+            : undefined,
+      };
 
-  useEffect(() => {
-    loadOrders();
-  }, [searchTerm, statusFilter, priorityFilter, establishmentFilter, technicianFilter]);
+      const response = await apiService.getServiceOrders(filters);
 
-  const loadData = async () => {
+      if (response.serviceOrders) {
+        setOrders(response.serviceOrders);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    }
+  }, [searchTerm, statusFilter, priorityFilter, establishmentFilter, technicianFilter, establishments, technicians]);
+
+  // Carregar dados iniciais: ordens, estabelecimentos e técnicos
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [ordersResponse, establishmentsResponse, techniciansResponse] = await Promise.all([
-        loadOrders(),
+      const [establishmentsResponse, techniciansResponse] = await Promise.all([
         apiService.getEstablishments(),
-        user?.userType === UserType.ADMIN
-          ? apiService.getTechnicians()
-          : Promise.resolve({ technicians: [] }),
+        user?.userType === UserType.ADMIN ? apiService.getTechnicians() : Promise.resolve({ technicians: [] }),
       ]);
 
       if (establishmentsResponse.establishments) {
@@ -78,31 +122,25 @@ const ServiceOrdersPage = () => {
       if (techniciansResponse.technicians) {
         setTechnicians(techniciansResponse.technicians);
       }
+
+      // Carregar ordens após estabelecer os dados de filtro
+      await loadOrders();
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [loadOrders, user?.userType]);
 
-  const loadOrders = async () => {
-    try {
-      const filters = {
-        search: searchTerm || undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        priority: priorityFilter !== 'all' ? priorityFilter : undefined,
-        establishmentId: establishmentFilter !== 'all' ? establishmentFilter : undefined,
-        technicianId: technicianFilter !== 'all' ? technicianFilter : undefined,
-      };
+  // useEffect para carregar dados na montagem
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-      const response = await apiService.getServiceOrders(filters);
-      if (response.serviceOrders) {
-        setOrders(response.serviceOrders);
-      }
-    } catch (error) {
-      console.error('Error loading orders:', error);
-    }
-  };
+  // useEffect para recarregar ordens ao alterar filtros ou busca
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -118,8 +156,11 @@ const ServiceOrdersPage = () => {
     setTechnicianFilter('all');
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -132,7 +173,7 @@ const ServiceOrdersPage = () => {
     return user?.userType === UserType.END_USER || user?.userType === UserType.ADMIN;
   };
 
-  const canEditOrder = (order) => {
+  const canEditOrder = (order: ServiceOrderType) => {
     if (user?.userType === UserType.ADMIN) return true;
     if (user?.userType === UserType.TECHNICIAN && order.technicianId === user.id) return true;
     if (user?.userType === UserType.END_USER && order.userId === user.id) return true;
@@ -339,7 +380,9 @@ const ServiceOrdersPage = () => {
                             {[...Array(5)].map((_, i) => (
                               <span
                                 key={i}
-                                className={`text-sm ${i < order.userRating ? 'text-yellow-400' : 'text-gray-300'}`}
+                                className={`text-sm ${
+                                  i < order.userRating ? 'text-yellow-400' : 'text-gray-300'
+                                }`}
                               >
                                 ★
                               </span>
@@ -376,7 +419,7 @@ const ServiceOrdersPage = () => {
                         size="sm"
                         className="text-red-600 hover:text-red-700"
                         onClick={() => {
-                          // TODO: Implement delete functionality
+                          // TODO: Implementar funcionalidade de exclusão
                           console.log('Delete order:', order.id);
                         }}
                       >
@@ -391,7 +434,7 @@ const ServiceOrdersPage = () => {
         )}
       </div>
 
-      {/* Pagination could be added here */}
+      {/* Paginação (se precisar) */}
       {orders.length > 0 && (
         <div className="text-center text-sm text-gray-500">
           Mostrando {orders.length} ordem(ns) de serviço

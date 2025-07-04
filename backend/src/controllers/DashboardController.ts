@@ -23,7 +23,7 @@ export class DashboardController {
     // Contar ordens por status
     ordersSnap.forEach(doc => {
       const data = doc.data();
-      const status = data.status;
+      const status = (data.status || '').toUpperCase();
 
       if (status === 'OPEN') stats.openOrders++;
       else if (status === 'IN_PROGRESS') stats.inProgressOrders++;

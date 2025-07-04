@@ -10,7 +10,7 @@ export class ServiceOrderController {
       const { status, establishmentId, technicianId, userId, page = 1, limit = 20 } = req.query;
 
       let query = db.collection('serviceOrders').orderBy('createdAt', 'desc');
-
+      
       // Filtros baseados no tipo de usuário
       if (req.user?.userType === UserType.TECHNICIAN) {
         query = query.where('technicianId', '==', req.user.id);

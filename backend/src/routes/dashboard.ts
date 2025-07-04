@@ -9,7 +9,7 @@ const dashboardController = new DashboardController();
 router.use(authenticateToken);
 
 // Dashboard principal (adaptado ao tipo de usuário)
-router.get('/', dashboardController.getDashboardData);
+router.get('/', dashboardController.getStats.bind(dashboardController));
 
 // Novas rotas para o dashboard
 router.get('/stats', dashboardController.getStats);
