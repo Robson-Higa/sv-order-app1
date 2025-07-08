@@ -55,7 +55,20 @@ const ServiceOrdersPage = () => {
   useEffect(() => {
     loadData();
   }, []);
+  useEffect(() => {
+    async function loadTechnicians() {
+      try {
+        const response = await apiService.getTechnicians();
+        if (response.data?.users) {
+          setTechnicians(response.data.users);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar técnicos:', error);
+      }
+    }
 
+    loadTechnicians();
+  }, []);
   useEffect(() => {
     loadOrders();
   }, [searchTerm, statusFilter, priorityFilter, establishmentFilter, technicianFilter]);
@@ -75,8 +88,8 @@ const ServiceOrdersPage = () => {
         setEstablishments(establishmentsResponse.establishments);
       }
 
-      if (techniciansResponse.technicians) {
-        setTechnicians(techniciansResponse.technicians);
+      if (techniciansResponse.users) {
+        setTechnicians(techniciansResponse.users);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -90,7 +103,7 @@ const ServiceOrdersPage = () => {
       const filters = {
         search: searchTerm || undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined,
-        priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+        priority: priorityFilter !== 'all' ? priorityFilter.toUpperCase() : undefined,
         establishmentId: establishmentFilter !== 'all' ? establishmentFilter : undefined,
         technicianId: technicianFilter !== 'all' ? technicianFilter : undefined,
       };

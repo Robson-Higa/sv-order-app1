@@ -42,12 +42,14 @@ export const apiService = {
   login: ({ email, password }) => api.post('/auth/login', { email, password }),
   register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout'),
-  changePassword: (currentPassword, newPassword) => 
+  changePassword: (currentPassword, newPassword) =>
     api.patch('/auth/change-password', { currentPassword, newPassword }),
 
   // Users
   getUsers: () => api.get('/users'),
-  getTechnicians: () => api.get('/users/technicians'),
+  getTechnicians: () => {
+    return api.get('/users', { params: { userType: 'TECHNICIAN' } });
+  },
   createUser: (userData) => api.post('/users', userData),
   updateUser: (id, userData) => api.patch(`/users/${id}`, userData),
   deleteUser: (id) => api.delete(`/users/${id}`),
@@ -61,23 +63,16 @@ export const apiService = {
 
   // Service Orders
   getServiceOrders: (filters = {}) => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params.append(key, value);
-      }
-    });
-    return api.get(`/service-orders?${params.toString()}`);
+    return api.get('/service-orders', { params: filters });
   },
   getServiceOrder: (id) => api.get(`/service-orders/${id}`),
   createServiceOrder: (data) => api.post('/service-orders', data),
   updateServiceOrder: (id, data) => api.patch(`/service-orders/${id}`, data),
   deleteServiceOrder: (id) => api.delete(`/service-orders/${id}`),
-  assignTechnician: (id, technicianId) => 
+  assignTechnician: (id, technicianId) =>
     api.patch(`/service-orders/${id}/assign`, { technicianId }),
-  updateStatus: (id, status, notes) => 
-    api.patch(`/service-orders/${id}/status`, { status, notes }),
-  addFeedback: (id, feedback, rating) => 
+  updateStatus: (id, status, notes) => api.patch(`/service-orders/${id}/status`, { status, notes }),
+  addFeedback: (id, feedback, rating) =>
     api.patch(`/service-orders/${id}/feedback`, { feedback, rating }),
   confirmCompletion: (id) => api.patch(`/service-orders/${id}/confirm`),
 
@@ -99,4 +94,3 @@ export const apiService = {
 };
 
 export default api;
-

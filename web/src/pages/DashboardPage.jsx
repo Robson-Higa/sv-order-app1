@@ -39,15 +39,14 @@ const DashboardPage = () => {
         apiService.getRecentOrders(),
       ]);
 
-      // Ajuste o mapeamento conforme o que seu backend retorna
       if (statsResponse.stats) {
         const stats = statsResponse.stats;
         setStats({
-          totalOrders: stats.total || 0,
-          openOrders: stats.open || 0,
-          assignedOrders: stats.assigned || 0,
-          inProgressOrders: stats.inProgress || 0,
-          completedOrders: stats.completed || 0,
+          totalOrders: stats.totalOrders || 0,
+          openOrders: stats.openOrders || 0,
+          assignedOrders: stats.assignedOrders || 0,
+          inProgressOrders: stats.inProgressOrders || 0,
+          completedOrders: stats.completedOrders || 0,
           totalUsers: stats.totalUsers || 0,
           totalEstablishments: stats.totalEstablishments || 0,
         });

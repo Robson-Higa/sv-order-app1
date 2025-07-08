@@ -1,46 +1,38 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { apiService } from '../services/api';
 
+// Exportação nomeada do contexto
 export const AuthContext = createContext();
 
-const AuthProvider = ({ children }) => {
+// Exportação nomeada do provider
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-    const storedToken = localStorage.getItem("authToken");
-    const storedUser = localStorage.getItem("user");
+  useEffect(() => {
+    const storedToken = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('user');
 
     if (storedToken && storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(parsedUser);
-        console.log("AuthContext: Usuário e token carregados do localStorage.", parsedUser);
+        console.log('AuthContext: Usuário e token carregados do localStorage.', parsedUser);
       } catch (error) {
-        console.error("AuthContext: Erro ao analisar dados do usuário do localStorage:", error);
-        // Limpa o localStorage se houver erro para evitar loop
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("user");
-        setToken(null);
-        setUser(null);
+        console.error('Erro ao carregar usuário:', error);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
       }
-    } else {
-      console.log("AuthContext: Nenhum usuário ou token encontrado no localStorage.");
     }
     setLoading(false);
-    console.log("AuthContext: Loading set to false.");
   }, []);
-
 
   const login = async ({ email, password }) => {
     try {
       setLoading(true);
       const response = await apiService.login({ email, password });
-      console.log('Resposta do login:', response);
-
-      // Aceita se vier token e user, mesmo sem success
       if (response.token && response.user) {
         setToken(response.token);
         setUser(response.user);
@@ -62,7 +54,6 @@ const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const response = await apiService.register(userData);
-      
       if (response.success && response.token && response.user) {
         setToken(response.token);
         setUser(response.user);
@@ -98,25 +89,23 @@ const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  const value = {
-    user,
-    token,
-    login,
-    register,
-    logout,
-    updateUser,
-    loading,
-    isAuthenticated: !!token && !!user,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        register,
+        logout,
+        updateUser,
+        loading,
+        isAuthenticated: !!token && !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
+// Hook personalizado
 export const useAuth = () => useContext(AuthContext);
-
-export default AuthProvider;
-

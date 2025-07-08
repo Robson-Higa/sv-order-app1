@@ -50,15 +50,16 @@ export class UserController {
 
   async getUsersByType(req: AuthRequest, res: Response) {
     try {
-      const { userType } = req.params;
+      const { userType: rawType } = req.params;
+const userType = rawType?.toUpperCase() as UserType;
 
       if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
-      if (!Object.values(UserType).includes(userType as UserType)) {
-        return res.status(400).json({ error: 'Tipo de usuário inválido' });
-      }
+      if (!Object.values(UserType).includes(userType)) {
+  return res.status(400).json({ error: 'Tipo de usuário inválido' });
+}
 
       const usersRef = db.collection('users');
       const snapshot = await usersRef

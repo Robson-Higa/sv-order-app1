@@ -41,6 +41,21 @@ export interface ServiceOrder {
   establishmentName: string;
   technicianId?: string;
   technicianName: string;
+   technician?: {
+    id: string;
+    name: string;
+    email?: string;
+  };
+  user?: {
+    id: string;
+    name: string;
+    email?: string;
+  };
+  establishment?: {
+    id: string;
+    name: string;
+    address?: string;
+  };
   userId?: string;
   userName?: string;
   createdAt: Date;

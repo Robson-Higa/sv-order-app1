@@ -5,69 +5,62 @@ import { generateId, generateOrderNumber } from '../utils/helpers';
 import { Query } from 'firebase-admin/firestore';
 
 export class ServiceOrderController {
-  async getAllServiceOrders(req: AuthRequest, res: Response) {
-    try {
-      const { status, establishmentId, technicianId, userId, page = 1, limit = 20 } = req.query;
+  async getAllServiceOrders(req: Request, res: Response) {
+  try {
+    const { status, priority, technicianId, establishmentId } = req.query;
 
-      let query = db.collection('serviceOrders').orderBy('createdAt', 'desc');
+    let query: FirebaseFirestore.Query = db.collection('serviceOrders');
 
-      // Filtros baseados no tipo de usuário
-      if (req.user?.userType === UserType.TECHNICIAN) {
-        query = query.where('technicianId', '==', req.user.id);
-      } else if (req.user?.userType === UserType.END_USER) {
-        query = query.where('userId', '==', req.user.id);
-      }
-
-      // Aplicar filtros adicionais
-      if (status) {
-        query = query.where('status', '==', status);
-      }
-      if (establishmentId) {
-        query = query.where('establishmentId', '==', establishmentId);
-      }
-      if (technicianId && req.user?.userType === UserType.ADMIN) {
-        query = query.where('technicianId', '==', technicianId);
-      }
-      if (userId && req.user?.userType === UserType.ADMIN) {
-        query = query.where('userId', '==', userId);
-      }
-
-      // Paginação
-      const pageNumber = parseInt(page as string);
-      const limitNumber = parseInt(limit as string);
-      const offset = (pageNumber - 1) * limitNumber;
-
-      const snapshot = await query.limit(limitNumber).offset(offset).get();
-
-      const serviceOrders = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ServiceOrder[];
-
-      // Buscar informações adicionais (usuário, técnico, estabelecimento)
-      const enrichedOrders = await Promise.all(
-        serviceOrders.map(async (order) => {
-          const [userDoc, technicianDoc, establishmentDoc] = await Promise.all([
-            order.userId ? db.collection('users').doc(order.userId).get() : null,
-            order.technicianId ? db.collection('users').doc(order.technicianId).get() : null,
-            order.establishmentId ? db.collection('establishments').doc(order.establishmentId).get() : null
-          ]);
-
-          return {
-            ...order,
-            user: userDoc && userDoc.exists ? { id: userDoc.id, name: userDoc.data()?.name } : null,
-            technician: technicianDoc && technicianDoc.exists ? { id: technicianDoc.id, name: technicianDoc.data()?.name } : null,
-            establishment: establishmentDoc && establishmentDoc.exists ? { id: establishmentDoc.id, name: establishmentDoc.data()?.name } : null
-          };
-        })
-      );
-
-      res.json({ serviceOrders: enrichedOrders });
-    } catch (error) {
-      console.error('Erro ao buscar ordens de serviço:', error);
-      res.status(500).json({ error: 'Erro interno do servidor' });
+    if (status) {
+      query = query.where('status', '==', status);
     }
+    if (priority) {
+      query = query.where('priority', '==', priority);
+    }
+    if (technicianId) {
+      query = query.where('technicianId', '==', technicianId);
+    }
+    if (establishmentId) {
+      query = query.where('establishmentId', '==', establishmentId);
+    }
+
+    const ordersSnap = await query.get();
+
+    const orders = await Promise.all(
+      ordersSnap.docs.map(async (doc) => {
+        const data = doc.data();
+
+        const order: any = {
+          id: doc.id,
+          ...data,
+          technician: undefined,
+        };
+
+        if (data.technicianId) {
+          const technicianRef = db.collection('users').doc(data.technicianId);
+          const techDoc = await technicianRef.get();
+
+          if (techDoc.exists) {
+            const techData = techDoc.data();
+            order.technician = {
+              name: techData?.name || '',
+              email: techData?.email || '',
+            };
+          }
+        }
+
+        return order;
+      })
+    );
+
+    res.status(200).json({ serviceOrders: orders });
+  } catch (error) {
+    console.error('Erro ao buscar ordens:', error);
+    res.status(500).json({ error: 'Erro ao buscar ordens' });
   }
+}
+
+
 
   async getServiceOrderById(req: AuthRequest, res: Response) {
     try {
