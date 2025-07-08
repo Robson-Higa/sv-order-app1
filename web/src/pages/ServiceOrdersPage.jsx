@@ -97,23 +97,62 @@ const ServiceOrdersPage = () => {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    async function loadTechnicians() {
+      try {
+        const response = await apiService.getTechnicians();
+        // Verifique o que exatamente está vindo em response
+        console.log('Tecnicos:', response);
+
+        if (response?.users) {
+          setTechnicians(response.users);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar técnicos:', error);
+      }
+    }
+    loadTechnicians();
+  }, []);
 
   const loadOrders = async () => {
     try {
+      // Criar filtro apenas com os valores válidos para evitar enviar undefined explicitamente
       const filters = {
         search: searchTerm || undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
+        status: statusFilter !== 'all' ? statusFilter.toLowerCase() : undefined,
         priority: priorityFilter !== 'all' ? priorityFilter.toUpperCase() : undefined,
         establishmentId: establishmentFilter !== 'all' ? establishmentFilter : undefined,
         technicianId: technicianFilter !== 'all' ? technicianFilter : undefined,
       };
 
+      if (searchTerm && searchTerm.trim() !== '') {
+        filters.search = searchTerm.trim();
+      }
+      if (statusFilter && statusFilter !== 'all') {
+        filters.status = statusFilter;
+      }
+      if (priorityFilter && priorityFilter !== 'all') {
+        filters.priority = priorityFilter.toUpperCase();
+      }
+      if (establishmentFilter && establishmentFilter !== 'all') {
+        filters.establishmentId = establishmentFilter;
+      }
+      if (technicianFilter && technicianFilter !== 'all') {
+        filters.technicianId = technicianFilter;
+      }
+
+      console.log('Filtros para busca:', filters); // Ajuda a debug
+
       const response = await apiService.getServiceOrders(filters);
-      if (response.serviceOrders) {
+
+      if (response && response.serviceOrders) {
         setOrders(response.serviceOrders);
+      } else {
+        setOrders([]); // limpa se não houver dados
       }
     } catch (error) {
       console.error('Error loading orders:', error);
+      setOrders([]); // importante para limpar lista em erro
     }
   };
 
@@ -268,9 +307,9 @@ const ServiceOrdersPage = () => {
                 <SelectContent>
                   <SelectItem value="all">Todos os técnicos</SelectItem>
                   {technicians
-                    .filter((t) => t.id && t.id !== '')
+                    .filter((t) => t.uid && t.uid !== '')
                     .map((technician) => (
-                      <SelectItem key={technician.id} value={technician.id}>
+                      <SelectItem key={technician.uid} value={technician.uid}>
                         {technician.name}
                       </SelectItem>
                     ))}

@@ -48,37 +48,38 @@ export class UserController {
     }
   }
 
-  async getUsersByType(req: AuthRequest, res: Response) {
-    try {
-      const { userType: rawType } = req.params;
-const userType = rawType?.toUpperCase() as UserType;
+async getUsersByType(req: AuthRequest, res: Response) {
+  try {
+    const { userType: rawType } = req.params;
+    const userType = rawType?.toLowerCase() as UserType;
 
-      if (req.user?.userType !== UserType.ADMIN) {
-        return res.status(403).json({ error: 'Acesso negado' });
-      }
+    if (req.user?.userType !== UserType.ADMIN) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
 
-      if (!Object.values(UserType).includes(userType)) {
-  return res.status(400).json({ error: 'Tipo de usuário inválido' });
+    if (!Object.values(UserType).includes(userType)) {
+      return res.status(400).json({ error: 'Tipo de usuário inválido' });
+    }
+
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef
+      .where('userType', '==', userType)
+      .where('isActive', '==', true)
+      .orderBy('name')
+      .get();
+
+    const users = snapshot.docs.map(doc => {
+      const userData = doc.data() as User;
+      return sanitizeUser(userData);
+    });
+
+    return res.json({ users });
+  } catch (error) {
+    console.error('Erro ao buscar usuários por tipo:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
 }
 
-      const usersRef = db.collection('users');
-      const snapshot = await usersRef
-        .where('userType', '==', userType)
-        .where('isActive', '==', true)
-        .orderBy('name')
-        .get();
-
-      const users = snapshot.docs.map(doc => {
-        const userData = doc.data() as User;
-        return sanitizeUser(userData);
-      });
-
-      return res.json({ users });
-    } catch (error) {
-      console.error('Erro ao buscar usuários por tipo:', error);
-      return res.status(500).json({ error: 'Erro interno do servidor' });
-    }
-  }
 
   async getTechnicians(req: AuthRequest, res: Response) {
     try {

@@ -47,9 +47,7 @@ export const apiService = {
 
   // Users
   getUsers: () => api.get('/users'),
-  getTechnicians: () => {
-    return api.get('/users', { params: { userType: 'TECHNICIAN' } });
-  },
+  getTechnicians: () => api.get('/users/type/technician'),
   createUser: (userData) => api.post('/users', userData),
   updateUser: (id, userData) => api.patch(`/users/${id}`, userData),
   deleteUser: (id) => api.delete(`/users/${id}`),

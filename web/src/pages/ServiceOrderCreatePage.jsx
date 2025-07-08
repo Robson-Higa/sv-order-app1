@@ -42,7 +42,7 @@ const ServiceOrderCreatePage = () => {
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('MEDIUM');
   const [establishmentName, setEstablishmentName] = useState('');
-  const [technicianName, setTechnicianName] = useState('');
+  const [technicianId, setTechnicianId] = useState('');
   const [establishments, setEstablishments] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -85,13 +85,16 @@ const ServiceOrderCreatePage = () => {
     setLoading(true);
 
     try {
+      const selectedTechnician = technicians.find((t) => t.id === technicianId);
+      const technicianName = selectedTechnician ? selectedTechnician.name : '';
+
       const payload = {
         title,
         description,
         priority,
         establishmentName,
-        technicianName,
-        ...(scheduledAt && { scheduledAt }), // só envia se preenchido
+        technicianName: selectedTechnician?.name || '', // envia o nome do técnico
+        ...(scheduledAt && { scheduledAt }),
       };
 
       const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -183,17 +186,18 @@ const ServiceOrderCreatePage = () => {
             <label className="block font-medium mb-1">Técnico (opcional)</label>
             <select
               className="border rounded w-full p-2"
-              value={technicianName}
-              onChange={(e) => setTechnicianName(e.target.value)}
+              value={technicianId}
+              onChange={(e) => setTechnicianId(e.target.value)}
             >
               <option value="">Não atribuir</option>
               {technicians.map((tech) => (
-                <option key={tech.id} value={tech.name}>
+                <option key={tech.id} value={tech.id}>
                   {tech.name}
                 </option>
               ))}
             </select>
           </div>
+
           {error && <div className="text-red-600">{error}</div>}
           <div className="flex gap-2">
             <button
