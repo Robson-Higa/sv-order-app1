@@ -9,7 +9,8 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ServiceOrdersPage from './pages/ServiceOrdersPage';
 import ServiceOrderCreatePage from './pages/ServiceOrderCreatePage';
-
+import UsersPage from './pages/UsersPage'; // Importar UsersPage
+import EstablishmentsPage from './pages/EstablishmentsPage';
 import './App.css';
 
 // Protected Route Component
@@ -102,10 +103,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Página de Usuários</h2>
-                <p className="text-gray-600">Esta página está em desenvolvimento.</p>
-              </div>
+              <UsersPage />
             </Layout>
           </ProtectedRoute>
         }
@@ -115,12 +113,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  Página de Estabelecimentos
-                </h2>
-                <p className="text-gray-600">Esta página está em desenvolvimento.</p>
-              </div>
+              <EstablishmentsPage />
             </Layout>
           </ProtectedRoute>
         }

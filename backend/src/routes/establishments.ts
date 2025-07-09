@@ -9,6 +9,8 @@ const establishmentController = new EstablishmentController();
 // Todas as rotas requerem autenticação
 router.use(authenticateToken);
 
+router.post('/', establishmentController.createEstablishment.bind(establishmentController));
+
 // Rotas públicas (para usuários autenticados)
 router.get('/', establishmentController.getAllEstablishments);
 router.get('/:id', establishmentController.getEstablishmentById);

@@ -4,25 +4,25 @@ import { useAuth } from '../contexts/AuthContext';
 import { UserType, getUserTypeText } from '../types';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { 
-  Building2, 
-  LayoutDashboard, 
-  ClipboardList, 
-  Users, 
-  Building, 
-  BarChart3, 
-  User, 
-  LogOut, 
+import {
+  Building2,
+  LayoutDashboard,
+  ClipboardList,
+  Users,
+  Building,
+  BarChart3,
+  User,
+  LogOut,
   Menu,
-  X
+  X,
 } from 'lucide-react';
 import '../App.css';
 
@@ -40,7 +40,7 @@ const Layout = ({ children }) => {
   const getInitials = (name) => {
     return name
       .split(' ')
-      .map(word => word[0])
+      .map((word) => word[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
@@ -51,37 +51,35 @@ const Layout = ({ children }) => {
       label: 'Dashboard',
       icon: LayoutDashboard,
       path: '/dashboard',
-      roles: [UserType.ADMIN, UserType.TECHNICIAN, UserType.END_USER]
+      roles: [UserType.ADMIN, UserType.TECHNICIAN, UserType.END_USER],
     },
     {
       label: 'Ordens de Serviço',
       icon: ClipboardList,
       path: '/service-orders',
-      roles: [UserType.ADMIN, UserType.TECHNICIAN, UserType.END_USER]
+      roles: [UserType.ADMIN, UserType.TECHNICIAN, UserType.END_USER],
     },
     {
       label: 'Usuários',
       icon: Users,
       path: '/users',
-      roles: [UserType.ADMIN]
+      roles: [UserType.ADMIN],
     },
     {
       label: 'Estabelecimentos',
       icon: Building,
       path: '/establishments',
-      roles: [UserType.ADMIN]
+      roles: [UserType.ADMIN],
     },
     {
       label: 'Relatórios',
       icon: BarChart3,
       path: '/reports',
-      roles: [UserType.ADMIN]
-    }
+      roles: [UserType.ADMIN],
+    },
   ];
 
-  const filteredMenuItems = menuItems.filter(item => 
-    item.roles.includes(user?.userType)
-  );
+  const filteredMenuItems = menuItems.filter((item) => item.roles.includes(user?.userType));
 
   const isActivePath = (path) => {
     return location.pathname === path;
@@ -91,24 +89,24 @@ const Layout = ({ children }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <div className={`
+      <div
+        className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0 lg:static lg:inset-0
-      `}>
+      `}
+      >
         <div className="flex items-center justify-between h-16 px-6 border-b">
           <div className="flex items-center gap-2">
             <Building2 className="w-8 h-8 text-blue-600" />
-            <span className="text-lg font-semibold text-gray-900">
-              Gestão OS
-            </span>
+            <span className="text-lg font-semibold text-gray-900">Gestão OS</span>
           </div>
           <Button
             variant="ghost"
@@ -125,11 +123,11 @@ const Layout = ({ children }) => {
             {filteredMenuItems.map((item) => {
               const Icon = item.icon;
               const isActive = isActivePath(item.path);
-              
+
               return (
                 <Button
                   key={item.path}
-                  variant={isActive ? "default" : "ghost"}
+                  variant={isActive ? 'default' : 'ghost'}
                   className={`
                     w-full justify-start mb-1 h-10
                     ${isActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}
@@ -156,12 +154,8 @@ const Layout = ({ children }) => {
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.name}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {getUserTypeText(user?.userType)}
-              </p>
+              <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+              <p className="text-xs text-gray-500 truncate">{getUserTypeText(user?.userType)}</p>
             </div>
           </div>
         </div>
@@ -180,10 +174,10 @@ const Layout = ({ children }) => {
             >
               <Menu className="w-5 h-5" />
             </Button>
-            
+
             <div>
               <h1 className="text-lg font-semibold text-gray-900">
-                {filteredMenuItems.find(item => isActivePath(item.path))?.label || 'Dashboard'}
+                {filteredMenuItems.find((item) => isActivePath(item.path))?.label || 'Dashboard'}
               </h1>
             </div>
           </div>
@@ -202,12 +196,8 @@ const Layout = ({ children }) => {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {user?.name}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email}
-                    </p>
+                    <p className="text-sm font-medium leading-none">{user?.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -226,13 +216,10 @@ const Layout = ({ children }) => {
         </header>
 
         {/* Page content */}
-        <main className="p-4 lg:p-6">
-          {children}
-        </main>
+        <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );
 };
 
 export default Layout;
-

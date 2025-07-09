@@ -22,7 +22,7 @@ export enum UserType {
 export interface Establishment {
   id: string;
   name: string;
-  address: string;
+  address?: string;
   phone?: string;
   email?: string;
   createdAt: Date;

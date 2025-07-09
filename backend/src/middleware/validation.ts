@@ -59,19 +59,6 @@ export const validateEstablishment = [
     .isLength({ min: 2, max: 100 })
     .withMessage('Nome deve ter entre 2 e 100 caracteres')
     .trim(),
-  body('address')
-    .isLength({ min: 10, max: 200 })
-    .withMessage('Endereço deve ter entre 10 e 200 caracteres')
-    .trim(),
-  body('phone')
-    .optional()
-    .isMobilePhone('pt-BR')
-    .withMessage('Telefone deve ser válido'),
-  body('email')
-    .optional()
-    .isEmail()
-    .withMessage('Email deve ser válido')
-    .normalizeEmail(),
   handleValidationErrors
 ];
 

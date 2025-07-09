@@ -54,10 +54,17 @@ export const apiService = {
   activateUser: (id) => api.patch(`/users/${id}/activate`),
 
   // Establishments
+  // Exemplo dos métodos no apiService.ts
+  // Correto e limpo
   getEstablishments: () => api.get('/establishments'),
   createEstablishment: (data) => api.post('/establishments', data),
-  updateEstablishment: (id, data) => api.patch(`/establishments/${id}`, data),
+  updateEstablishment: (id, data) => api.put(`/establishments/${id}`, data),
   deleteEstablishment: (id) => api.delete(`/establishments/${id}`),
+  deactivateEstablishment: (id) => api.patch(`/establishments/${id}/deactivate`),
+  activateEstablishment: (id) => api.patch(`/establishments/${id}/activate`),
+  getEstablishments: async () => {
+    return await api.get('/establishments'); // Sem .data
+  },
 
   // Service Orders
   getServiceOrders: (filters = {}) => {

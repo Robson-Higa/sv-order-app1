@@ -69,7 +69,7 @@ export class EstablishmentController {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
-      const { name, address, phone, email } = req.body;
+      const { name } = req.body;
 
       // Verificar se já existe um estabelecimento com o mesmo nome
       const existingEstablishment = await db.collection('establishments')
@@ -83,15 +83,13 @@ export class EstablishmentController {
 
       const establishmentId = generateId();
       const newEstablishment: Establishment = {
-        id: establishmentId,
-        name,
-        address,
-        phone,
-        email,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isActive: true
-      };
+  id: establishmentId,
+  name,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  isActive: true
+};
+
 
       await db.collection('establishments').doc(establishmentId).set(newEstablishment);
 
@@ -112,7 +110,7 @@ export class EstablishmentController {
       }
 
       const { id } = req.params;
-      const { name, address, phone, email } = req.body;
+      const { name } = req.body;
 
       const establishmentDoc = await db.collection('establishments').doc(id);
       const establishmentSnapshot = await establishmentDoc.get();
@@ -139,10 +137,7 @@ export class EstablishmentController {
       };
 
       if (name) updateData.name = name;
-      if (address) updateData.address = address;
-      if (phone !== undefined) updateData.phone = phone;
-      if (email !== undefined) updateData.email = email;
-
+    
       await establishmentDoc.update(updateData);
 
       // Buscar dados atualizados
