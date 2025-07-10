@@ -97,5 +97,9 @@ export const apiService = {
     return api.get(`/reports?${params.toString()}`);
   },
 };
+export async function getEndUsers() {
+  const response = await api.get('/users/type/END_USER');
+  return response.data.users;
+}
 
 export default api;

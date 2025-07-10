@@ -113,6 +113,11 @@ const ServiceOrdersPage = () => {
     }
     loadTechnicians();
   }, []);
+  // Função auxiliar para pegar o nome do técnico pelo ID
+  const getTechnicianNameById = (id) => {
+    const technician = technicians.find((t) => t.id === id);
+    return technician?.name || '';
+  };
 
   const loadOrders = async () => {
     try {
@@ -122,7 +127,10 @@ const ServiceOrdersPage = () => {
         status: statusFilter !== 'all' ? statusFilter.toLowerCase() : undefined,
         priority: priorityFilter !== 'all' ? priorityFilter.toUpperCase() : undefined,
         establishmentId: establishmentFilter !== 'all' ? establishmentFilter : undefined,
-        technicianId: technicianFilter !== 'all' ? technicianFilter : undefined,
+        technicianName:
+          technicianFilter !== 'all'
+            ? { technicianName: getTechnicianNameById(technicianFilter) }
+            : {},
       };
 
       if (searchTerm && searchTerm.trim() !== '') {
@@ -371,7 +379,7 @@ const ServiceOrdersPage = () => {
                       {order.establishment && (
                         <div className="flex items-center gap-2">
                           <Building className="w-4 h-4" />
-                          <span>ESF: {order.establishment.name}</span>
+                          <span>: {order.establishment.name}</span>
                         </div>
                       )}
 

@@ -9,7 +9,7 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ServiceOrdersPage from './pages/ServiceOrdersPage';
 import ServiceOrderCreatePage from './pages/ServiceOrderCreatePage';
-import UsersPage from './pages/UsersPage'; // Importar UsersPage
+import UsersAdminPage from './pages/UsersAdminPage'; // Importar UsersPage
 import EstablishmentsPage from './pages/EstablishmentsPage';
 import './App.css';
 
@@ -103,7 +103,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <UsersPage />
+              <UsersAdminPage />
             </Layout>
           </ProtectedRoute>
         }
