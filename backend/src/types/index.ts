@@ -4,6 +4,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+    phone?: string;
   userType: UserType;
   establishmentId?: string;
   createdAt: Date;

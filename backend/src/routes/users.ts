@@ -8,6 +8,7 @@ const userController = new UserController();
 // Todas as rotas requerem autenticação
 router.use(authenticateToken);
 
+router.post('/', authenticateToken, userController.createUser.bind(userController));
 
 // Rotas administrativas
 router.get('/technicians', requireAdmin, userController.getTechnicians);
