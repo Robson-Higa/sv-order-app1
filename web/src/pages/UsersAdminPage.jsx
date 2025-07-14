@@ -35,9 +35,10 @@ import {
   SelectValue,
   SelectItem,
 } from '../components/ui/select';
-import { Alert, AlertDescription } from '../components/ui/alert';
+//import { Alert, AlertDescription } from '../components/ui/alert';
 
-import { Edit, Trash2, Loader2, Plus } from 'lucide-react';
+import { Edit, Trash2 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { UserType, getUserTypeText } from '../types';
 
 const UsersAdminPage = () => {
@@ -46,7 +47,7 @@ const UsersAdminPage = () => {
   const [error, setError] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [phone, setPhone] = useState('');
+  //const [phone, setPhone] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -58,6 +59,7 @@ const UsersAdminPage = () => {
   const [establishments, setEstablishments] = useState([]);
 
   useEffect(() => {
+    console.log('Executando useEffect inicial');
     loadUsers();
     loadEstablishments();
   }, []);
@@ -65,9 +67,23 @@ const UsersAdminPage = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const response = await apiService.getAllUsers();
-      setUsers(response.users);
+      const usersResponse = await apiService.getAllUsers();
+
+      console.log('📦 Resposta da API getAllUsers:', usersResponse);
+
+      const usersArray = Array.isArray(usersResponse) ? usersResponse : usersResponse?.users;
+
+      if (!Array.isArray(usersArray)) {
+        throw new Error('Resposta da API inválida: não é um array de usuários');
+      }
+
+      const sorted = [...usersArray].sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+      );
+
+      setUsers(sorted);
     } catch (err) {
+      console.error('Erro ao carregar usuários:', err);
       setError('Erro ao carregar usuários.');
     } finally {
       setLoading(false);
@@ -127,7 +143,7 @@ const UsersAdminPage = () => {
     if (
       !formData.name ||
       !formData.email ||
-      !formData.password ||
+      (!editingUser && !formData.password) || // senha só obrigatória se for novo cadastro
       !formData.phone ||
       !formData.userType
     ) {
@@ -140,9 +156,26 @@ const UsersAdminPage = () => {
       return;
     }
 
+    const dataToSubmit = {
+      ...formData,
+      phone: formData.phone,
+    };
+
+    // Remove o campo de senha se estiver em edição
+    if (editingUser) {
+      delete dataToSubmit.password;
+    }
+
     try {
-      await apiService.createUser(formData);
-      alert('Usuário cadastrado com sucesso!');
+      if (editingUser) {
+        await apiService.updateUser(editingUser.id, dataToSubmit);
+        alert('Usuário atualizado com sucesso!');
+      } else {
+        await apiService.createUser(dataToSubmit);
+        alert('Usuário cadastrado com sucesso!');
+      }
+
+      setEditingUser(null);
       setFormData({
         name: '',
         email: '',
@@ -151,9 +184,10 @@ const UsersAdminPage = () => {
         userType: '',
         establishmentName: '',
       });
+      await loadUsers();
     } catch (err) {
       console.error(err);
-      alert('Erro ao cadastrar usuário.');
+      alert('Erro ao salvar usuário.');
     }
   };
 
@@ -169,14 +203,18 @@ const UsersAdminPage = () => {
   };
 
   const handleEdit = (user) => {
-    setEditingUser(user);
+    const establishment = establishments.find((e) => e.id === user.establishmentId);
+
+    setEditingUser({ ...user, id: user.uid }); // garante que PATCH use o uid
+
     setFormData({
-      name: user.name,
-      phone: user.phone,
-      userType: user.userType,
-      establishmentId: user.establishmentId || '',
+      name: user.name || '',
+      email: user.email || '',
+      password: '', // não editável
+      phone: user.phone || '',
+      userType: user.userType || '',
+      establishmentName: establishment?.name || '',
     });
-    setIsDialogOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -197,139 +235,24 @@ const UsersAdminPage = () => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // return (
-  //   <div className="space-y-6">
-  //     <div className="flex justify-between items-center">
-  //       <h1 className="text-2xl font-bold text-gray-900">Gerenciar Usuários</h1>
-  //       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-  //         <DialogTrigger asChild>
-  //           <Button
-  //             onClick={() => {
-  //               setEditingUser(null);
-  //               setFormData({ name: '', phone: '', userType: '', establishmentId: '' });
-  //               setError('');
-  //             }}
-  //           >
-  //             <Plus className="w-4 h-4 mr-2" /> Novo Usuário
-  //           </Button>
-  //         </DialogTrigger>
-  //         <DialogContent>
-  //           <DialogHeader>
-  //             <DialogTitle>{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</DialogTitle>
-  //           </DialogHeader>
-  //           <form onSubmit={handleSubmit} className="space-y-4">
-  //             {error && (
-  //               <Alert variant="destructive">
-  //                 <AlertDescription>{error}</AlertDescription>
-  //               </Alert>
-  //             )}
-  //             <div>
-  //               <Label>Nome</Label>
-  //               <Input
-  //                 value={formData.name}
-  //                 onChange={(e) => handleInputChange('name', e.target.value)}
-  //                 required
-  //               />
-  //             </div>
-  //             <div>
-  //               <Label>Telefone</Label>
-  //               <Input
-  //                 value={formData.phone}
-  //                 onChange={(e) => handleInputChange('phone', e.target.value)}
-  //                 required
-  //               />
-  //             </div>
-  //             <div>
-  //               <Label>Tipo de Usuário</Label>
-  //               <Select
-  //                 value={formData.userType}
-  //                 onValueChange={(value) => handleInputChange('userType', value)}
-  //               >
-  //                 <SelectTrigger>
-  //                   <SelectValue placeholder="Selecione" />
-  //                 </SelectTrigger>
-  //                 <SelectContent>
-  //                   <SelectItem value={UserType.ADMIN}>Administrador</SelectItem>
-  //                   <SelectItem value={UserType.TECHNICIAN}>Técnico</SelectItem>
-  //                   <SelectItem value={UserType.END_USER}>Usuário Final</SelectItem>
-  //                 </SelectContent>
-  //               </Select>
-  //             </div>
-  //             {formData.userType === UserType.END_USER && (
-  //               <div>
-  //                 <Label>Estabelecimento</Label>
-  //                 <Select
-  //                   value={formData.establishmentId}
-  //                   onValueChange={(value) => handleInputChange('establishmentId', value)}
-  //                 >
-  //                   <SelectTrigger>
-  //                     <SelectValue placeholder="Selecione" />
-  //                   </SelectTrigger>
-  //                   <SelectContent>
-  //                     {establishments.map((est) => (
-  //                       <SelectItem key={est.id} value={est.id}>
-  //                         {est.name}
-  //                       </SelectItem>
-  //                     ))}
-  //                   </SelectContent>
-  //                 </Select>
-  //               </div>
-  //             )}
-  //             <DialogFooter>
-  //               <Button type="submit" disabled={loading}>
-  //                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-  //                 Salvar
-  //               </Button>
-  //             </DialogFooter>
-  //           </form>
-  //         </DialogContent>
-  //       </Dialog>
-  //     </div>
+  const toggleActivation = async (user) => {
+    try {
+      const updatedStatus = !user.isActive;
 
-  //     <Card>
-  //       <CardHeader>
-  //         <CardTitle>Lista de Usuários</CardTitle>
-  //       </CardHeader>
-  //       <CardContent>
-  //         <Table>
-  //           <TableHeader>
-  //             <TableRow>
-  //               <TableHead>Nome</TableHead>
-  //               <TableHead>Tipo</TableHead>
-  //               <TableHead>Telefone</TableHead>
-  //               <TableHead>Ações</TableHead>
-  //             </TableRow>
-  //           </TableHeader>
-  //           <TableBody>
-  //             {users.map((user) => (
-  //               <TableRow key={user.id}>
-  //                 <TableCell>{user.name}</TableCell>
-  //                 <TableCell>{getUserTypeText(user.userType)}</TableCell>
-  //                 <TableCell>{user.phone}</TableCell>
-  //                 <TableCell className="flex gap-2">
-  //                   <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
-  //                     <Edit className="w-4 h-4" />
-  //                   </Button>
-  //                   <Button
-  //                     variant="outline"
-  //                     size="sm"
-  //                     className="text-red-600"
-  //                     onClick={() => handleDelete(user.id)}
-  //                   >
-  //                     <Trash2 className="w-4 h-4" />
-  //                   </Button>
-  //                 </TableCell>
-  //               </TableRow>
-  //             ))}
-  //           </TableBody>
-  //         </Table>
-  //       </CardContent>
-  //     </Card>
-  //   </div>
-  // );
+      await apiService.updateUser(user.uid || user.id, {
+        isActive: updatedStatus,
+      });
+
+      alert(`Usuário ${updatedStatus ? 'ativado' : 'desativado'} com sucesso!`);
+      await loadUsers();
+    } catch (error) {
+      console.error('Erro ao ativar/desativar usuário:', error);
+      alert('Erro ao atualizar status do usuário.');
+    }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
+    <form onSubmit={handleSubmit} className="space-y-4 w-full">
       <div>
         <Label>Nome</Label>
         <Input
@@ -349,24 +272,27 @@ const UsersAdminPage = () => {
         />
       </div>
 
-      <div>
-        <Label>Senha</Label>
-        <Input
-          type="password"
-          value={formData.password}
-          onChange={(e) => handleInputChange('password', e.target.value)}
-          required
-        />
-      </div>
+      {!editingUser && (
+        <div>
+          <Label>Senha</Label>
+          <Input
+            type="password"
+            value={formData.password}
+            onChange={(e) => handleInputChange('password', e.target.value)}
+            required
+          />
+        </div>
+      )}
 
       <div>
         <Label>Telefone</Label>
-
         <IMaskInput
-          mask="(00) 00000-0000"
-          value={phone}
-          onAccept={(value) => setPhone(value)}
-          unmask={true} // opcional, retorna valor "limpo"
+          mask="+{55}(00)00000-0000"
+          value={formData.phone}
+          onAccept={(value) => handleInputChange('phone', value)}
+          overwrite
+          placeholder="(67) 99999-9999"
+          className="border p-2 rounded w-full"
         />
       </div>
 
@@ -398,7 +324,77 @@ const UsersAdminPage = () => {
         </div>
       )}
 
-      <Button type="submit">Cadastrar</Button>
+      <Button type="submit">{editingUser ? 'Confirmar Edição' : 'Cadastrar'}</Button>
+      {editingUser && (
+        <Button
+          variant="outline"
+          type="button"
+          onClick={() => {
+            setEditingUser(null);
+            setFormData({
+              name: '',
+              email: '',
+              password: '',
+              phone: '',
+              userType: '',
+              establishmentName: '',
+            });
+          }}
+        >
+          Cancelar Edição
+        </Button>
+      )}
+
+      <div className="w-full">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Lista de Usuários</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table className="w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Ações</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="w-full">
+                {Array.isArray(users) && users.length > 0 ? (
+                  users.map((user) => (
+                    <TableRow key={user.id || user.email || user.name}>
+                      <TableCell>{user.name}</TableCell>
+                      <TableCell>{getUserTypeText(user.userType)}</TableCell>
+                      <TableCell>{user.phone}</TableCell>
+                      <TableCell className="flex gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(user.id)}>
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => toggleActivation(user)}>
+                          {user.isActive ? (
+                            <EyeOff className="w-4 h-4 text-yellow-500" />
+                          ) : (
+                            <Eye className="w-4 h-4 text-green-500" />
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4}>Nenhum usuário encontrado.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </form>
   );
 };

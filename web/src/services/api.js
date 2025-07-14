@@ -47,9 +47,15 @@ export const apiService = {
 
   // Users
   getUsers: () => api.get('/users'),
+  getAllUsers: async () => {
+    const res = await api.get('/users'); // usa o `api` com interceptors
+    return res.users; // <-- retorna direto o array
+  },
   getTechnicians: () => api.get('/users/type/technician'),
   createUser: (userData) => api.post('/users', userData),
-  updateUser: (id, userData) => api.patch(`/users/${id}`, userData),
+  updateUser: async (id, data) => {
+    return api.patch(`/users/${id}`, data);
+  },
   deleteUser: (id) => api.delete(`/users/${id}`),
   activateUser: (id) => api.patch(`/users/${id}/activate`),
 
