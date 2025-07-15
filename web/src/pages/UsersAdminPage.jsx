@@ -57,9 +57,24 @@ const UsersAdminPage = () => {
     establishmentName: '',
   });
   const [establishments, setEstablishments] = useState([]);
+  function formatPhone(phone) {
+    if (!phone) return '';
+
+    const digits = phone.replace(/\D/g, '');
+
+    const number = digits.startsWith('55') ? digits.slice(2) : digits;
+
+    if (number.length === 11) {
+      return number.replace(/^(\d{2})(\d{1})(\d{4})(\d{4})$/, '($1) $2$3-$4');
+    } else if (number.length === 10) {
+      return number.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+    } else {
+      return phone;
+    }
+  }
 
   useEffect(() => {
-    console.log('Executando useEffect inicial');
+    // console.log('Executando useEffect inicial');
     loadUsers();
     loadEstablishments();
   }, []);
@@ -168,7 +183,7 @@ const UsersAdminPage = () => {
 
     try {
       if (editingUser) {
-        await apiService.updateUser(editingUser.id, dataToSubmit);
+        await apiService.updateUser(editingUser.uid, dataToSubmit);
         alert('Usuário atualizado com sucesso!');
       } else {
         await apiService.createUser(dataToSubmit);
@@ -205,7 +220,7 @@ const UsersAdminPage = () => {
   const handleEdit = (user) => {
     const establishment = establishments.find((e) => e.id === user.establishmentId);
 
-    setEditingUser({ ...user, id: user.uid }); // garante que PATCH use o uid
+    setEditingUser(user); // garante que PATCH use o uid
 
     setFormData({
       name: user.name || '',
@@ -221,7 +236,7 @@ const UsersAdminPage = () => {
     if (window.confirm('Deseja excluir este usuário?')) {
       setLoading(true);
       try {
-        await apiService.deleteUser(id);
+        await apiService.deleteUser(uid);
         await loadUsers();
       } catch (err) {
         setError('Erro ao deletar usuário.');
@@ -239,7 +254,7 @@ const UsersAdminPage = () => {
     try {
       const updatedStatus = !user.isActive;
 
-      await apiService.updateUser(user.uid || user.id, {
+      await apiService.updateUser(user.uid, {
         isActive: updatedStatus,
       });
 
@@ -250,6 +265,7 @@ const UsersAdminPage = () => {
       alert('Erro ao atualizar status do usuário.');
     }
   };
+  // console.log('Atualizando usuário com UID:', editingUser?.uid);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
@@ -351,9 +367,9 @@ const UsersAdminPage = () => {
             <CardTitle>Lista de Usuários</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table className="w-full">
+            <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="justify-between">
                   <TableHead>Nome</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Telefone</TableHead>
@@ -361,33 +377,56 @@ const UsersAdminPage = () => {
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="w-full">
+              <TableBody>
                 {Array.isArray(users) && users.length > 0 ? (
-                  users.map((user) => (
-                    <TableRow key={user.id || user.email || user.name}>
-                      <TableCell>{user.name}</TableCell>
-                      <TableCell>{getUserTypeText(user.userType)}</TableCell>
-                      <TableCell>{user.phone}</TableCell>
-                      <TableCell className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(user.id)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => toggleActivation(user)}>
-                          {user.isActive ? (
-                            <EyeOff className="w-4 h-4 text-yellow-500" />
-                          ) : (
-                            <Eye className="w-4 h-4 text-green-500" />
-                          )}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  users.map((user) => {
+                    const est = establishments.find((e) => e.uid === user.establishmentId);
+
+                    return (
+                      <TableRow key={user.uid || user.email || user.name} className="align-middle">
+                        <TableCell>{user.name}</TableCell>
+                        <TableCell>{getUserTypeText(user.userType)}</TableCell>
+                        <TableCell>{formatPhone(user.phone)}</TableCell>
+                        <TableCell className="flex gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(user.uid)}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleActivation(user)}
+                          >
+                            {user.isActive ? (
+                              <Eye className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <EyeOff className="w-4 h-4 text-yellow-500" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-block px-2 py-1 text-xs rounded-full ${
+                              est?.isActive
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-200 text-gray-600'
+                            }`}
+                          >
+                            {est?.isActive ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4}>Nenhum usuário encontrado.</TableCell>
+                    <TableCell colSpan={5}>Nenhum usuário encontrado.</TableCell>
                   </TableRow>
                 )}
               </TableBody>

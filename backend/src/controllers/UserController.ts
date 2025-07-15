@@ -6,33 +6,34 @@ import { sanitizeUser, generateId, hashPassword } from '../utils/helpers';
 import * as admin from 'firebase-admin'; 
 
 export class UserController {
-  async getAllUsers(req: AuthRequest, res: Response) {
-    try {
-      if (req.user?.userType !== UserType.ADMIN) {
-        return res.status(403).json({ error: 'Acesso negado' });
-      }
-
-      const usersRef = db.collection('users');
-      const snapshot = await usersRef.orderBy('createdAt', 'desc').get();
-
-      const users = snapshot.docs.map(doc => {
-        const userData = doc.data() as User;
-        return sanitizeUser(userData);
-      });
-
-      return res.json({ users });
-    } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
-      return res.status(500).json({ error: 'Erro interno do servidor' });
+async getAllUsers(req: AuthRequest, res: Response) {
+  try {
+    if (req.user?.userType !== UserType.ADMIN) {
+      return res.status(403).json({ error: 'Acesso negado' });
     }
+
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef.orderBy('createdAt', 'desc').get();
+
+    const users = snapshot.docs.map(doc => {
+      const userData = doc.data() as User;
+      return sanitizeUser({ ...userData, uid: doc.id });
+    });
+
+    return res.json({ users });
+  } catch (error) {
+    console.error('Erro ao buscar usuários:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
+}
+
 
   async getUserById(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
 
       // Verificar permissões
-      if (req.user?.userType !== UserType.ADMIN && req.user?.id !== id) {
+      if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -42,8 +43,9 @@ export class UserController {
         return res.status(404).json({ error: 'Usuário não encontrado' });
       }
 
-      const userData = userDoc.data() as User;
-      return res.json({ user: sanitizeUser(userData) });
+    const userData = userDoc.data() as User;
+return res.json({ user: sanitizeUser({ ...userData, uid: userDoc.id }) });
+
     } catch (error) {
       console.error('Erro ao buscar usuário:', error);
       return res.status(500).json({ error: 'Erro interno do servidor' });
@@ -132,7 +134,7 @@ async createUser(req: AuthRequest, res: Response) {
 
       // 2. Criar documento no Firestore com o uid do Auth
       const userData: User = {
-        id: userRecord.uid,
+        uid: userRecord.uid,
         name,
         email,
         phone,
@@ -158,62 +160,66 @@ async createUser(req: AuthRequest, res: Response) {
       return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
-  async updateUser(req: AuthRequest, res: Response) {
-    try {
-      const { id } = req.params;
-      const { name, email, establishmentId, isActive } = req.body;
+ async updateUser(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const { name, email, establishmentId, isActive } = req.body;
 
-      // Verificar permissões
-      if (req.user?.userType !== UserType.ADMIN && req.user?.id !== id) {
-        return res.status(403).json({ error: 'Acesso negado' });
-      }
-
-      const userDoc = await db.collection('users').doc(id);
-      const userSnapshot = await userDoc.get();
-
-      if (!userSnapshot.exists) {
-        return res.status(404).json({ error: 'Usuário não encontrado' });
-      }
-
-      const updateData: Partial<User> = {
-        updatedAt: new Date()
-      };
-
-      if (name) updateData.name = name;
-      if (email) {
-        // Verificar se o email já está em uso por outro usuário
-        const emailCheck = await db.collection('users')
-          .where('email', '==', email)
-          .where('id', '!=', id)
-          .get();
-        
-        if (!emailCheck.empty) {
-          return res.status(400).json({ error: 'Email já está em uso' });
-        }
-        updateData.email = email;
-      }
-      if (establishmentId !== undefined) updateData.establishmentId = establishmentId;
-      
-      // Apenas admins podem alterar o status ativo
-      if (req.user?.userType === UserType.ADMIN && isActive !== undefined) {
-        updateData.isActive = isActive;
-      }
-
-      await userDoc.update(updateData);
-
-      // Buscar dados atualizados
-      const updatedUserSnapshot = await userDoc.get();
-      const updatedUserData = updatedUserSnapshot.data() as User;
-
-      return res.json({
-        message: 'Usuário atualizado com sucesso',
-        user: sanitizeUser(updatedUserData)
-      });
-    } catch (error) {
-      console.error('Erro ao atualizar usuário:', error);
-      return res.status(500).json({ error: 'Erro interno do servidor' });
+    // Verificar permissões
+    if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
+      return res.status(403).json({ error: 'Acesso negado' });
     }
+
+    const userRef = db.collection('users').doc(id);
+    const userSnapshot = await userRef.get();
+
+    if (!userSnapshot.exists) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const updateData: Partial<User> = {
+      updatedAt: new Date(),
+    };
+
+    if (name) updateData.name = name;
+
+    if (email) {
+      const emailCheck = await db.collection('users')
+        .where('email', '==', email)
+        .get();
+
+      const emailInUseByAnotherUser = emailCheck.docs.some(doc => doc.id !== id);
+
+      if (emailInUseByAnotherUser) {
+        return res.status(400).json({ error: 'Email já está em uso' });
+      }
+
+      updateData.email = email;
+    }
+
+    if (establishmentId !== undefined) {
+      updateData.establishmentId = establishmentId;
+    }
+
+    if (req.user?.userType === UserType.ADMIN && isActive !== undefined) {
+      updateData.isActive = isActive;
+    }
+
+    await userRef.update(updateData);
+
+    const updatedUserSnapshot = await userRef.get();
+    const updatedUserData = updatedUserSnapshot.data() as User;
+
+    return res.json({
+  message: 'Usuário atualizado com sucesso',
+  user: sanitizeUser({ ...updatedUserData, uid: userRef.id }),
+});
+
+  } catch (error) {
+    console.error('Erro ao atualizar usuário:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
+}
 
   async deactivateUser(req: AuthRequest, res: Response) {
     try {
@@ -223,7 +229,7 @@ async createUser(req: AuthRequest, res: Response) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
-      if (req.user.id === id) {
+      if (req.user.uid === id) {
         return res.status(400).json({ error: 'Você não pode desativar sua própria conta' });
       }
 
@@ -281,7 +287,7 @@ async createUser(req: AuthRequest, res: Response) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
-      if (req.user.id === id) {
+      if (req.user.uid === id) {
         return res.status(400).json({ error: 'Você não pode excluir sua própria conta' });
       }
 
@@ -312,6 +318,7 @@ async createUser(req: AuthRequest, res: Response) {
       return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
+  
 
   async getUserStats(req: AuthRequest, res: Response) {
     try {

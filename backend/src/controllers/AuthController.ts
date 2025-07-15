@@ -93,7 +93,7 @@ export class AuthController {
 
       const userId = generateId();
       const newUser: User = {
-        id: userId,
+        uid: userId,
         email,
         password: hashedPassword,
         name,
@@ -138,7 +138,7 @@ export class AuthController {
 
       const userId = generateId();
       const newAdmin: User = {
-        id: userId,
+        uid: userId,
         email,
         password: hashedPassword,
         name,
@@ -186,7 +186,7 @@ export class AuthController {
 
       const userId = generateId();
       const newTechnician: User = {
-        id: userId,
+        uid: userId,
         email,
         password: hashedPassword,
         name,
@@ -215,7 +215,7 @@ export class AuthController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      const userDoc = await db.collection('users').doc(req.user.id).get();
+      const userDoc = await db.collection('users').doc(req.user.uid).get();
 
       if (!userDoc.exists) {
         return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -240,7 +240,7 @@ export class AuthController {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
 
-      const userDoc = await db.collection('users').doc(req.user.id).get();
+      const userDoc = await db.collection('users').doc(req.user.uid).get();
 
       if (!userDoc.exists) {
         return res.status(404).json({ error: 'Usuário não encontrado' });
