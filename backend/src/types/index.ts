@@ -7,6 +7,7 @@ export interface User {
     phone?: string;
   userType: UserType;
   establishmentId?: string | null;
+  establishmentName?: string | null; // Adicionado para usuários do tipo END_USER
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;

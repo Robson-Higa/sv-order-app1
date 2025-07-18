@@ -1,13 +1,13 @@
-import express from 'express';
+import { Router } from 'express';
 import { AuthController } from '../controllers/AuthController';
 import { validateLogin, validateRegister } from '../middleware/validation';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 const authController = new AuthController();
 
 // Rotas públicas
-router.post('/login', validateLogin, authController.login);
+router.post('/login', authController.login);
 router.post('/register', validateRegister, authController.register);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);

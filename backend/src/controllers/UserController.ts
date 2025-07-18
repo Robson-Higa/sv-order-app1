@@ -233,8 +233,9 @@ async createUser(req: AuthRequest, res: Response) {
         return res.status(400).json({ error: 'Você não pode desativar sua própria conta' });
       }
 
-      const userDoc = await db.collection('users').doc(id);
-      const userSnapshot = await userDoc.get();
+      const userDoc = db.collection('users').doc(id);
+const userSnapshot = await userDoc.get();
+
 
       if (!userSnapshot.exists) {
         return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -260,8 +261,9 @@ async createUser(req: AuthRequest, res: Response) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
-      const userDoc = await db.collection('users').doc(id);
-      const userSnapshot = await userDoc.get();
+      const userDoc = db.collection('users').doc(id);
+const userSnapshot = await userDoc.get();
+
 
       if (!userSnapshot.exists) {
         return res.status(404).json({ error: 'Usuário não encontrado' });
@@ -291,8 +293,8 @@ async createUser(req: AuthRequest, res: Response) {
         return res.status(400).json({ error: 'Você não pode excluir sua própria conta' });
       }
 
-      const userDoc = await db.collection('users').doc(id);
-      const userSnapshot = await userDoc.get();
+     const userDoc = db.collection('users').doc(id);
+const userSnapshot = await userDoc.get();
 
       if (!userSnapshot.exists) {
         return res.status(404).json({ error: 'Usuário não encontrado' });
