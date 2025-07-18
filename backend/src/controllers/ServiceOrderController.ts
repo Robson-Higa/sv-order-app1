@@ -78,10 +78,10 @@ export class ServiceOrderController {
       } as ServiceOrder;
 
       // Verificar permissões
-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
+      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
-      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.uid) {
+      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -195,10 +195,10 @@ export class ServiceOrderController {
       const serviceOrder = serviceOrderSnapshot.data() as ServiceOrder;
 
       // Verificar permissões
-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
+      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
-      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.uid) {
+      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -304,7 +304,7 @@ export class ServiceOrderController {
       const serviceOrder = serviceOrderSnapshot.data() as ServiceOrder;
 
       // Verificar permissões
-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
+      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -334,9 +334,9 @@ export class ServiceOrderController {
       
       // Filtrar por usuário se não for admin
       if (req.user?.userType === UserType.TECHNICIAN) {
-        baseQuery = serviceOrdersRef.where('technicianId', '==', req.user.uid);
+        baseQuery = serviceOrdersRef.where('technicianId', '==', req.user.id);
       } else if (req.user?.userType === UserType.END_USER) {
-        baseQuery = serviceOrdersRef.where('userId', '==', req.user.uid);
+        baseQuery = serviceOrdersRef.where('userId', '==', req.user.id);
       }
 
       const [

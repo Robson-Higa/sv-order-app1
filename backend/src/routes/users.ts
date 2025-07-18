@@ -21,7 +21,6 @@ router.get('/:id', userController.getUserById);
 router.put('/:id', userController.updateUser);
 router.patch('/:id/deactivate', requireAdmin, userController.deactivateUser);
 router.patch('/:id/activate', requireAdmin, userController.activateUser);
-router.patch('/:id', requireAdmin, userController.updateUser);
 router.delete('/:id', requireAdmin, userController.deleteUser);
 
 export default router;

@@ -1,12 +1,12 @@
 import { Request } from 'express';
 
 export interface User {
-  uid: string;
+  id: string;
   email: string;
   name: string;
     phone?: string;
   userType: UserType;
-  establishmentId?: string | null;
+  establishmentId?: string;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
