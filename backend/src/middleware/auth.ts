@@ -1,64 +1,102 @@
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../config/firebase'; // Admin SDK Firebase configurado
+import { auth } from '../config/firebase';
 import { User, UserType } from '../types';
+import * as admin from 'firebase-admin';
 
 export interface AuthRequest extends Request {
   user?: User;
 }
 
+// Middleware de autenticação principal
 export const authenticateToken = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+): Promise<Response | void> => {
   try {
     const authHeader = req.headers['authorization'];
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'Token não fornecido' });
-      return ;
+      return res.status(401).json({ 
+        error: 'Token não fornecido',
+        code: 'MISSING_TOKEN'
+      });
     }
 
     const token = authHeader.split(' ')[1];
-
-    // Verifica o token via Firebase Admin SDK
     const decodedToken = await auth.verifyIdToken(token);
 
-    // Extraia as claims customizadas que você configurou no Firebase
-    const userType = (decodedToken.userType as UserType) || UserType.END_USER;
+    if (!decodedToken.uid) {
+      return res.status(401).json({ 
+        error: 'Token inválido',
+        code: 'INVALID_TOKEN'
+      });
+    }
 
-    // Monte o objeto user para ser usado no restante da aplicação
+    const userDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
+    
+    if (!userDoc.exists) {
+      console.log(`Usuário ${decodedToken.uid} não encontrado no Firestore`);
+      return res.status(403).json({ 
+        error: 'Usuário não registrado',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    const userData = userDoc.data();
+    
+    if (userData?.isActive === false) {
+      console.log(`Usuário ${decodedToken.uid} está desativado`);
+      return res.status(403).json({
+        error: 'Conta desativada',
+        code: 'ACCOUNT_DISABLED'
+      });
+    }
+
     req.user = {
       uid: decodedToken.uid,
-      email: decodedToken.email ?? '',
-      userType,
-      name: decodedToken.name ?? '',
-      isActive: true, // opcional, ou carregue do Firestore se quiser controle dinâmico
-      createdAt: new Date(), // ajuste conforme sua necessidade
-      updatedAt: new Date(),
+      email: decodedToken.email ?? userData?.email ?? '',
+      userType: userData?.userType || UserType.END_USER,
+      name: decodedToken.name ?? userData?.name ?? '',
+      isActive: userData?.isActive !== false,
+      createdAt: userData?.createdAt?.toDate() ?? new Date(),
+      updatedAt: userData?.updatedAt?.toDate() ?? new Date(),
     };
 
-    next();
+    return next();
+    
   } catch (error) {
     console.error('Erro de autenticação:', error);
-     res.status(401).json({ error: 'Token inválido ou expirado' });
-     return
+    return res.status(500).json({
+      error: 'Erro na autenticação',
+      code: 'AUTH_ERROR'
+    });
   }
 };
 
-export const requireRole = (roles: UserType[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+// Factory function para verificação de roles
+export const checkRole = (allowedRoles: UserType[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): Response | void => {
     if (!req.user) {
-       res.status(401).json({ error: 'Usuário não autenticado' });
-       return
+      return res.status(401).json({ 
+        error: 'Não autenticado',
+        code: 'UNAUTHENTICATED'
+      });
     }
-    if (!roles.includes(req.user.userType)) {
-       res.status(403).json({ error: 'Acesso negado. Permissões insuficientes.' });
-    return
-      }
-    next();
+    
+    if (!allowedRoles.includes(req.user.userType)) {
+      return res.status(403).json({ 
+        error: 'Acesso negado',
+        code: 'FORBIDDEN',
+        requiredRoles: allowedRoles
+      });
+    }
+    
+    return next();
   };
 };
 
-export const requireAdmin = requireRole([UserType.ADMIN]);
-export const requireTechnician = requireRole([UserType.TECHNICIAN, UserType.ADMIN]);
-export const requireEndUser = requireRole([UserType.END_USER, UserType.ADMIN]);
+// Middlewares específicos
+export const requireAdmin = checkRole([UserType.ADMIN]);
+export const requireTechnician = checkRole([UserType.TECHNICIAN, UserType.ADMIN]);
+export const requireEndUser = checkRole([UserType.END_USER, UserType.ADMIN]);

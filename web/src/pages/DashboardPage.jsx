@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { checkAuth } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
-import { UserType, getStatusText, getStatusColor } from '../types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { UserType } from '../types';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { CardDescription } from '@/components/ui/card';
 import {
   ClipboardList,
   Clock,
   CheckCircle,
-  XCircle,
+  AlertCircle,
   Users,
   Building,
   TrendingUp,
-  AlertCircle,
   Plus,
+  RefreshCw,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import '../App.css';
 
 const DashboardPage = () => {
   const { user } = useAuth();
@@ -25,42 +26,73 @@ const DashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+      setError(null);
 
+      // Verificar autenticação
+      const token = localStorage.getItem('token');
+      if (!token || !user) {
+        throw new Error('Faça login para acessar o dashboard');
+      }
+
+      // Add API service validation
+      if (!apiService?.dashboard) {
+        throw new Error('Serviço de dashboard não disponível');
+      }
+
+      // Carregar dados em paralelo com tratamento de erros individual
       const [statsResponse, recentResponse] = await Promise.all([
-        apiService.getDashboardStats(),
-        apiService.getRecentOrders(),
+        apiService.dashboard.getStats?.().catch((e) => {
+          console.error('Failed to load stats:', e);
+          return { stats: null };
+        }),
+        apiService.dashboard.getRecentOrders?.().catch((e) => {
+          console.error('Failed to load recent orders:', e);
+          return { recentOrders: null };
+        }),
       ]);
 
-      if (statsResponse.stats) {
-        const stats = statsResponse.stats;
-        setStats({
-          totalOrders: stats.totalOrders || 0,
-          openOrders: stats.openOrders || 0,
-          assignedOrders: stats.assignedOrders || 0,
-          inProgressOrders: stats.inProgressOrders || 0,
-          completedOrders: stats.completedOrders || 0,
-          totalUsers: stats.totalUsers || 0,
-          totalEstablishments: stats.totalEstablishments || 0,
-        });
+      // Verificar respostas com mais detalhes
+      if (!statsResponse || !statsResponse.stats) {
+        throw new Error('Dados estatísticos não disponíveis');
       }
 
-      if (recentResponse.recentOrders) {
-        setRecentOrders(recentResponse.recentOrders);
+      if (!recentResponse || !recentResponse.recentOrders) {
+        console.warn('Ordens recentes não disponíveis');
       }
+
+      // Definir estados com valores padrão seguros
+      setStats({
+        totalOrders: statsResponse.stats.totalOrders ?? 0,
+        openOrders: statsResponse.stats.openOrders ?? 0,
+        assignedOrders: statsResponse.stats.assignedOrders ?? 0,
+        inProgressOrders: statsResponse.stats.inProgressOrders ?? 0,
+        completedOrders: statsResponse.stats.completedOrders ?? 0,
+        totalUsers: statsResponse.stats.totalUsers ?? 0,
+        totalEstablishments: statsResponse.stats.totalEstablishments ?? 0,
+      });
+
+      setRecentOrders(recentResponse.recentOrders ?? []);
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      // ... (keep your existing error handling)
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadDashboardData();
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [user]); // Recarrega quando o usuário muda
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -75,28 +107,28 @@ const DashboardPage = () => {
     const baseCards = [
       {
         title: 'Total de Ordens',
-        value: stats.totalOrders || 0,
+        value: stats.totalOrders,
         icon: ClipboardList,
         color: 'text-blue-600',
         bgColor: 'bg-blue-50',
       },
       {
         title: 'Em Aberto',
-        value: stats.openOrders || 0,
+        value: stats.openOrders,
         icon: Clock,
         color: 'text-yellow-600',
         bgColor: 'bg-yellow-50',
       },
       {
         title: 'Em Progresso',
-        value: stats.inProgressOrders || 0,
+        value: stats.inProgressOrders,
         icon: AlertCircle,
         color: 'text-orange-600',
         bgColor: 'bg-orange-50',
       },
       {
         title: 'Concluídas',
-        value: stats.completedOrders || 0,
+        value: stats.completedOrders,
         icon: CheckCircle,
         color: 'text-green-600',
         bgColor: 'bg-green-50',
@@ -107,14 +139,14 @@ const DashboardPage = () => {
       baseCards.push(
         {
           title: 'Total de Usuários',
-          value: stats.totalUsers || 0,
+          value: stats.totalUsers,
           icon: Users,
           color: 'text-purple-600',
           bgColor: 'bg-purple-50',
         },
         {
           title: 'Estabelecimentos',
-          value: stats.totalEstablishments || 0,
+          value: stats.totalEstablishments,
           icon: Building,
           color: 'text-indigo-600',
           bgColor: 'bg-indigo-50',
@@ -125,7 +157,7 @@ const DashboardPage = () => {
     if (user?.userType === UserType.TECHNICIAN) {
       baseCards.push({
         title: 'Atribuídas a Mim',
-        value: stats.assignedOrders || 0,
+        value: stats.assignedOrders,
         icon: TrendingUp,
         color: 'text-blue-600',
         bgColor: 'bg-blue-50',
@@ -161,6 +193,21 @@ const DashboardPage = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-red-800 mb-2">Erro ao carregar dashboard</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button variant="outline" onClick={loadDashboardData}>
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -172,12 +219,10 @@ const DashboardPage = () => {
           <p className="text-gray-600 mt-1">Aqui está um resumo das suas atividades</p>
         </div>
 
-        {user?.userType === UserType.END_USER && (
-          <Button onClick={() => navigate('/service-orders/new')}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Ordem
-          </Button>
-        )}
+        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Atualizar
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -232,9 +277,7 @@ const DashboardPage = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h4 className="font-medium text-gray-900">{order.title}</h4>
-                      <Badge className={getStatusColor(order.status)}>
-                        {getStatusText(order.status)}
-                      </Badge>
+                      <Badge>{order.status}</Badge>
                     </div>
                     <p className="text-sm text-gray-600 mb-1">
                       {order.description?.substring(0, 100)}
@@ -242,8 +285,7 @@ const DashboardPage = () => {
                     </p>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
                       <span>Criada em: {formatDate(order.createdAt)}</span>
-                      {order.establishment && <span>ESF: {order.establishment.name}</span>}
-                      {order.technician && <span>Técnico: {order.technician.name}</span>}
+                      {order.establishment && <span>Local: {order.establishment.name}</span>}
                     </div>
                   </div>
                 </div>
@@ -252,61 +294,6 @@ const DashboardPage = () => {
           )}
         </CardContent>
       </Card>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => navigate('/service-orders')}
-        >
-          <CardContent className="p-6 text-center">
-            <ClipboardList className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900 mb-1">Gerenciar Ordens</h3>
-            <p className="text-sm text-gray-600">
-              Visualizar e gerenciar todas as ordens de serviço
-            </p>
-          </CardContent>
-        </Card>
-
-        {user?.userType === UserType.ADMIN && (
-          <>
-            <Card
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/users')}
-            >
-              <CardContent className="p-6 text-center">
-                <Users className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                <h3 className="font-medium text-gray-900 mb-1">Gerenciar Usuários</h3>
-                <p className="text-sm text-gray-600">Adicionar e gerenciar usuários do sistema</p>
-              </CardContent>
-            </Card>
-
-            <Card
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/reports')}
-            >
-              <CardContent className="p-6 text-center">
-                <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-3" />
-                <h3 className="font-medium text-gray-900 mb-1">Relatórios</h3>
-                <p className="text-sm text-gray-600">Visualizar relatórios e análises do sistema</p>
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {user?.userType === UserType.END_USER && (
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigate('/service-orders/new')}
-          >
-            <CardContent className="p-6 text-center">
-              <Plus className="w-8 h-8 text-green-600 mx-auto mb-3" />
-              <h3 className="font-medium text-gray-900 mb-1">Nova Ordem</h3>
-              <p className="text-sm text-gray-600">Criar uma nova ordem de serviço</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
     </div>
   );
 };

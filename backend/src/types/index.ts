@@ -1,7 +1,9 @@
 import { Request } from 'express';
+import * as admin from 'firebase-admin';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export interface User {
-  id: string;
+  uid: string;
   email: string;
   name: string;
     phone?: string;
@@ -12,6 +14,15 @@ export interface User {
   isActive: boolean;
   password?: string;
   lastLogin?: Date;
+}
+export interface UserFirestore extends Omit<User, 'createdAt' | 'updatedAt'> {
+  createdAt: Timestamp | FieldValue;
+  updatedAt: Timestamp | FieldValue;
+}
+
+// Tipo para criação de usuários
+export interface UserCreateInput extends Omit<User, 'uid' | 'createdAt' | 'updatedAt'> {
+  password: string;
 }
 
 export enum UserType {

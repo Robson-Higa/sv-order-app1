@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { db } from '../config/firebase';
 import { User, UserType, AuthRequest } from '../types';
 import { sanitizeUser, generateId, hashPassword } from '../utils/helpers';
-
+import { UserFirestore } from '../types';
+import { Timestamp } from 'firebase-admin/firestore';
 import * as admin from 'firebase-admin'; 
 
 export class UserController {
@@ -32,7 +33,7 @@ export class UserController {
       const { id } = req.params;
 
       // Verificar permissões
-      if (req.user?.userType !== UserType.ADMIN && req.user?.id !== id) {
+      if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -110,61 +111,76 @@ async getUsersByType(req: AuthRequest, res: Response) {
     }
   }
 async createUser(req: AuthRequest, res: Response) {
-    if (req.user?.userType !== UserType.ADMIN) {
-      return res.status(403).json({ error: 'Acesso negado' });
-    }
-
-    const { name, email, password, phone, userType } = req.body;
-
-    if (!name || !email || !password || !userType) {
-      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
-    }
-
-    try {
-      // 1. Criar usuário no Firebase Auth
-      const userRecord = await admin.auth().createUser({
-        email,
-        password,
-        displayName: name,
-        phoneNumber: phone, // opcional, formatar telefone conforme padrão E.164 se possível
-        disabled: false,
-      });
-
-      // 2. Criar documento no Firestore com o uid do Auth
-      const userData: User = {
-        id: userRecord.uid,
-        name,
-        email,
-        phone,
-        userType,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        // adicione campos extras necessários
-      };
-
-      await db.collection('users').doc(userRecord.uid).set(userData);
-
-      // 3. Retornar sucesso e dados do usuário criado (sanitize se quiser)
-      return res.status(201).json({ user: sanitizeUser(userData) });
-    } catch (error: any) {
-      console.error('Erro ao criar usuário:', error);
-
-      // Se erro do Firebase Auth: email já existente, senha inválida, etc
-      if (error.code === 'auth/email-already-exists') {
-        return res.status(400).json({ error: 'Email já cadastrado' });
-      }
-
-      return res.status(500).json({ error: 'Erro interno do servidor' });
-    }
+  // Verificação de permissões
+  if (req.user?.userType !== UserType.ADMIN) {
+    return res.status(403).json({ error: 'Acesso negado' });
   }
+
+  // Validação de entrada
+  const { name, email, password, phone, userType } = req.body;
+  if (!name || !email || !password || !userType) {
+    return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+  }
+
+  try {
+    // 1. Criar usuário no Firebase Auth
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: name,
+      phoneNumber: phone,
+      disabled: false,
+    });
+
+    // 2. Definir custom claims
+    await admin.auth().setCustomUserClaims(userRecord.uid, {
+      userType,
+      isActive: true,
+    });
+
+    // 3. Preparar dados para o Firestore
+    const userFirestoreData: UserFirestore = {
+      uid: userRecord.uid,
+      name,
+      email,
+      phone: phone || null,
+      userType,
+      isActive: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    // 4. Salvar no Firestore
+    await db.collection('users').doc(userRecord.uid).set(userFirestoreData);
+
+    // 5. Recuperar os dados para garantir os timestamps
+    const doc = await db.collection('users').doc(userRecord.uid).get();
+    const userData = doc.data() as UserFirestore;
+
+    // 6. Converter para o tipo User
+    const userResponse: User = {
+      ...userData,
+      uid: userRecord.uid,
+      createdAt: (userData.createdAt as Timestamp).toDate(),
+      updatedAt: (userData.updatedAt as Timestamp).toDate(),
+    };
+
+    return res.status(201).json({ user: sanitizeUser(userResponse) });
+  } catch (error: any) {
+    console.error('Erro ao criar usuário:', error);
+    if (error.code === 'auth/email-already-exists') {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
   async updateUser(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
       const { name, email, establishmentId, isActive } = req.body;
 
       // Verificar permissões
-      if (req.user?.userType !== UserType.ADMIN && req.user?.id !== id) {
+      if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -223,7 +239,7 @@ async createUser(req: AuthRequest, res: Response) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
-      if (req.user.id === id) {
+      if (req.user.uid === id) {
         return res.status(400).json({ error: 'Você não pode desativar sua própria conta' });
       }
 
@@ -283,7 +299,7 @@ const userSnapshot = await userDoc.get();
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
-      if (req.user.id === id) {
+      if (req.user.uid === id) {
         return res.status(400).json({ error: 'Você não pode excluir sua própria conta' });
       }
 

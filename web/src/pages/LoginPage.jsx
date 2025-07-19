@@ -20,16 +20,17 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const credentials = {
-      email,
-      password,
-    };
+    setLoading(true);
+    setError('');
 
     try {
-      await login(credentials); // <-- Verifica o conteúdo de credentials aqui
+      await login({ email, password });
+      navigate('/dashboard');
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('Login error:', error);
+      setError(error.message || 'Falha no login. Verifique suas credenciais.');
+    } finally {
+      setLoading(false);
     }
   };
 

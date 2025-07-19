@@ -12,7 +12,7 @@ export async function comparePassword(password: string, hash: string): Promise<b
 
 export function generateToken(user: User): string {
   return jwt.sign(
-    { id: user.id, email: user.email, userType: user.userType },
+    { id: user.uid, email: user.email, userType: user.userType },
     process.env.JWT_SECRET || 'secret',
     { expiresIn: '7d' }
   );

@@ -2,7 +2,6 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 
-// Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -10,101 +9,96 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Enhanced request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+
+      // Add user type if available
+      const user = JSON.parse(localStorage.getItem('user') || {});
+      if (user.userType) {
+        config.headers['X-User-Type'] = user.userType;
+      }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle errors
+// Enhanced response interceptor
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+
+    if (status === 401 || status === 403) {
+      localStorage.removeItem('token');
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
-    return Promise.reject(error.response?.data || error.message);
+
+    return Promise.reject(
+      error.response?.data || { error: error.message || 'Unknown error occurred' }
+    );
   }
 );
 
+// Consolidated API methods
 export const apiService = {
+  // Auth
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout'),
-  changePassword: (currentPassword, newPassword) =>
-    api.patch('/auth/change-password', { currentPassword, newPassword }),
+  verifyToken: () => api.get('/auth/verify'),
+  refreshToken: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
 
   // Users
   getUsers: () => api.get('/users'),
-  getAllUsers: async () => {
-    const res = await api.get('/users'); // usa o `api` com interceptors
-    return res.users; // <-- retorna direto o array
-  },
-  getTechnicians: () => api.get('/users/type/technician'),
+  getUser: (id) => api.get(`/users/${id}`),
   createUser: (userData) => api.post('/users', userData),
-  updateUser: async (id, data) => {
-    return api.patch(`/users/${id}`, data);
-  },
+  updateUser: (id, data) => api.patch(`/users/${id}`, data),
   deleteUser: (id) => api.delete(`/users/${id}`),
   activateUser: (id) => api.patch(`/users/${id}/activate`),
 
-  // Establishments
-  // Exemplo dos métodos no apiService.ts
-  // Correto e limpo
+  // User Types
+  getTechnicians: () => api.get('/users/type/technician'),
+  getEndUsers: () => api.get('/users/type/end_user'),
+
+  // Establishments (single implementation)
   getEstablishments: () => api.get('/establishments'),
   createEstablishment: (data) => api.post('/establishments', data),
   updateEstablishment: (id, data) => api.put(`/establishments/${id}`, data),
   deleteEstablishment: (id) => api.delete(`/establishments/${id}`),
-  deactivateEstablishment: (id) => api.patch(`/establishments/${id}/deactivate`),
-  activateEstablishment: (id) => api.patch(`/establishments/${id}/activate`),
-  getEstablishments: async () => {
-    return await api.get('/establishments'); // Sem .data
-  },
 
   // Service Orders
-  getServiceOrders: (filters = {}) => {
-    return api.get('/service-orders', { params: filters });
-  },
+  getServiceOrders: (filters = {}) => api.get('/service-orders', { params: filters }),
   getServiceOrder: (id) => api.get(`/service-orders/${id}`),
   createServiceOrder: (data) => api.post('/service-orders', data),
   updateServiceOrder: (id, data) => api.patch(`/service-orders/${id}`, data),
-  deleteServiceOrder: (id) => api.delete(`/service-orders/${id}`),
-  assignTechnician: (id, technicianId) =>
-    api.patch(`/service-orders/${id}/assign`, { technicianId }),
-  updateStatus: (id, status, notes) => api.patch(`/service-orders/${id}/status`, { status, notes }),
-  addFeedback: (id, feedback, rating) =>
-    api.patch(`/service-orders/${id}/feedback`, { feedback, rating }),
-  confirmCompletion: (id) => api.patch(`/service-orders/${id}/confirm`),
 
   // Dashboard
   getDashboardStats: () => api.get('/dashboard/stats'),
-  getRecentOrders: () => api.get('/dashboard/recent-orders'),
+  getRecentOrders: (limit = 5) => api.get(`/dashboard/recent-orders?limit=${limit}`),
   getActiveOrders: () => api.get('/dashboard/active-orders'),
-
-  // Reports
-  getReports: (filters = {}) => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params.append(key, value);
-      }
-    });
-    return api.get(`/reports?${params.toString()}`);
-  },
 };
-export async function getEndUsers() {
-  const response = await api.get('/users/type/END_USER');
-  return response.data.users;
-}
+
+// Utility function to check auth state
+export const checkAuth = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+
+    const userData = await apiService.verifyToken();
+    localStorage.setItem('user', JSON.stringify(userData));
+    return userData;
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    localStorage.removeItem('token');
+    return null;
+  }
+};
 
 export default api;

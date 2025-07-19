@@ -1,66 +1,95 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { apiService } from '../services/api';
-import { app } from '../services/firebase'; // Importa a instância do Firebase
+import { app } from '../services/firebase';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
-// Exportação nomeada do contexto
 export const AuthContext = createContext();
-const auth = getAuth(app);
-// Exportação nomeada do provider
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const auth = getAuth(app);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('authToken');
-    const storedUser = localStorage.getItem('user');
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        // Usuário está autenticado no Firebase
+        const token = await firebaseUser.getIdToken();
+        const userData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          name: firebaseUser.displayName,
+          // Adicione outros campos conforme necessário
+        };
 
-    if (storedToken && storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setToken(storedToken);
-        setUser(parsedUser);
-        console.log('AuthContext: Usuário e token carregados do localStorage.', parsedUser);
-      } catch (error) {
-        console.error('Erro ao carregar usuário:', error);
-        localStorage.removeItem('authToken');
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setToken(token);
+        setUser(userData);
+      } else {
+        // Usuário não está autenticado
+        localStorage.removeItem('token');
         localStorage.removeItem('user');
+        setToken(null);
+        setUser(null);
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const auth = getAuth();
-
-  const login = async ({ email, password }) => {
+  const login = async (credentials) => {
     try {
       setLoading(true);
+      setError(null);
 
-      // Login no Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // 1. Autenticação com Firebase
+      const { user: firebaseUser } = await signInWithEmailAndPassword(
+        auth,
+        credentials.email,
+        credentials.password
+      );
 
-      // Pega o idToken JWT do Firebase
-      const idToken = await userCredential.user.getIdToken();
+      // 2. Obter token do Firebase
+      const firebaseToken = await firebaseUser.getIdToken();
 
-      // Envia idToken para o backend validar e receber dados do usuário
-      console.log('Enviando para backend:', { idToken });
-      const response = await apiService.login({ idToken });
+      // 3. Autenticação com sua API personalizada (opcional)
+      const apiResponse = await apiService.auth.login({
+        token: firebaseToken,
+        ...credentials,
+      });
 
-      console.log('Resposta do backend:', response);
+      // 4. Armazenar dados
+      const userData = {
+        ...apiResponse.user,
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+      };
 
-      if (response.token && response.user) {
-        setToken(response.token);
-        setUser(response.user);
-        localStorage.setItem('authToken', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        return response;
-      } else {
-        throw new Error(response.message || 'Login failed');
-      }
+      localStorage.setItem('token', firebaseToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setToken(firebaseToken);
+      setUser(userData);
+
+      return userData;
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
+
+      let errorMessage = 'Erro ao fazer login';
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Senha incorreta';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'Usuário não encontrado';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -69,18 +98,24 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       setLoading(true);
-      const response = await apiService.register(userData);
-      if (response.success && response.token && response.user) {
-        setToken(response.token);
-        setUser(response.user);
-        localStorage.setItem('authToken', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
+      setError(null);
+
+      const response = await apiService.auth.register(userData);
+
+      if (response.success && response.user) {
+        // Após registro bem-sucedido na API, faça login automático
+        await login({
+          email: userData.email,
+          password: userData.password,
+        });
+
         return response;
-      } else {
-        throw new Error(response.message || 'Registration failed');
       }
+
+      throw new Error(response.message || 'Registration failed');
     } catch (error) {
       console.error('Registration error:', error);
+      setError(error.message);
       throw error;
     } finally {
       setLoading(false);
@@ -89,14 +124,14 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await apiService.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
+      await auth.signOut();
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       setToken(null);
       setUser(null);
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setError('Erro ao fazer logout');
     }
   };
 
@@ -105,23 +140,25 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        login,
-        register,
-        logout,
-        updateUser,
-        loading,
-        isAuthenticated: !!token && !!user,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    token,
+    login,
+    register,
+    logout,
+    updateUser,
+    loading,
+    error,
+    isAuthenticated: !!token && !!user,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Hook personalizado
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
