@@ -38,8 +38,7 @@ api.interceptors.response.use(
 );
 
 export const apiService = {
-  // Authentication
-  login: ({ email, password }) => api.post('/auth/login', { email, password }),
+  login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout'),
   changePassword: (currentPassword, newPassword) =>

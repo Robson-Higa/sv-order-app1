@@ -1,9 +1,11 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { apiService } from '../services/api';
+import { app } from '../services/firebase'; // Importa a instância do Firebase
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 // Exportação nomeada do contexto
 export const AuthContext = createContext();
-
+const auth = getAuth(app);
 // Exportação nomeada do provider
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -29,10 +31,24 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  const auth = getAuth();
+
   const login = async ({ email, password }) => {
     try {
       setLoading(true);
-      const response = await apiService.login({ email, password });
+
+      // Login no Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      // Pega o idToken JWT do Firebase
+      const idToken = await userCredential.user.getIdToken();
+
+      // Envia idToken para o backend validar e receber dados do usuário
+      console.log('Enviando para backend:', { idToken });
+      const response = await apiService.login({ idToken });
+
+      console.log('Resposta do backend:', response);
+
       if (response.token && response.user) {
         setToken(response.token);
         setUser(response.user);

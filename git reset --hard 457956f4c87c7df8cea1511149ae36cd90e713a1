@@ -1,0 +1,171 @@
+[33mcommit 457956f4c87c7df8cea1511149ae36cd90e713a1[m
+Author: Robson-Higa <higarobson@gmail.com>
+Date:   Tue Jul 15 18:24:22 2025 -0400
+
+    tela usuarios corrigida
+
+[1mdiff --git a/backend/src/controllers/AuthController.ts b/backend/src/controllers/AuthController.ts[m
+[1mindex 660b663..05e6bc2 100644[m
+[1m--- a/backend/src/controllers/AuthController.ts[m
+[1m+++ b/backend/src/controllers/AuthController.ts[m
+[36m@@ -93,7 +93,7 @@[m [mexport class AuthController {[m
+ [m
+       const userId = generateId();[m
+       const newUser: User = {[m
+[31m-        id: userId,[m
+[32m+[m[32m        uid: userId,[m
+         email,[m
+         password: hashedPassword,[m
+         name,[m
+[36m@@ -138,7 +138,7 @@[m [mexport class AuthController {[m
+ [m
+       const userId = generateId();[m
+       const newAdmin: User = {[m
+[31m-        id: userId,[m
+[32m+[m[32m        uid: userId,[m
+         email,[m
+         password: hashedPassword,[m
+         name,[m
+[36m@@ -186,7 +186,7 @@[m [mexport class AuthController {[m
+ [m
+       const userId = generateId();[m
+       const newTechnician: User = {[m
+[31m-        id: userId,[m
+[32m+[m[32m        uid: userId,[m
+         email,[m
+         password: hashedPassword,[m
+         name,[m
+[36m@@ -215,7 +215,7 @@[m [mexport class AuthController {[m
+         return res.status(401).json({ error: 'Usuário não autenticado' });[m
+       }[m
+ [m
+[31m-      const userDoc = await db.collection('users').doc(req.user.id).get();[m
+[32m+[m[32m      const userDoc = await db.collection('users').doc(req.user.uid).get();[m
+ [m
+       if (!userDoc.exists) {[m
+         return res.status(404).json({ error: 'Usuário não encontrado' });[m
+[36m@@ -240,7 +240,7 @@[m [mexport class AuthController {[m
+         return res.status(401).json({ error: 'Usuário não autenticado' });[m
+       }[m
+ [m
+[31m-      const userDoc = await db.collection('users').doc(req.user.id).get();[m
+[32m+[m[32m      const userDoc = await db.collection('users').doc(req.user.uid).get();[m
+ [m
+       if (!userDoc.exists) {[m
+         return res.status(404).json({ error: 'Usuário não encontrado' });[m
+[1mdiff --git a/backend/src/controllers/ServiceOrderController.ts b/backend/src/controllers/ServiceOrderController.ts[m
+[1mindex bbaf234..d7fb25d 100644[m
+[1m--- a/backend/src/controllers/ServiceOrderController.ts[m
+[1m+++ b/backend/src/controllers/ServiceOrderController.ts[m
+[36m@@ -78,10 +78,10 @@[m [mexport class ServiceOrderController {[m
+       } as ServiceOrder;[m
+ [m
+       // Verificar permissões[m
+[31m-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.id) {[m
+[32m+[m[32m      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {[m
+         return res.status(403).json({ error: 'Acesso negado' });[m
+       }[m
+[31m-      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.id) {[m
+[32m+[m[32m      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.uid) {[m
+         return res.status(403).json({ error: 'Acesso negado' });[m
+       }[m
+ [m
+[36m@@ -195,10 +195,10 @@[m [mexport class ServiceOrderController {[m
+       const serviceOrder = serviceOrderSnapshot.data() as ServiceOrder;[m
+ [m
+       // Verificar permissões[m
+[31m-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.id) {[m
+[32m+[m[32m      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {[m
+         return res.status(403).json({ error: 'Acesso negado' });[m
+       }[m
+[31m-      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.id) {[m
+[32m+[m[32m      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.uid) {[m
+         return res.status(403).json({ error: 'Acesso negado' });[m
+       }[m
+ [m
+[36m@@ -304,7 +304,7 @@[m [mexport class ServiceOrderController {[m
+       const serviceOrder = serviceOrderSnapshot.data() as ServiceOrder;[m
+ [m
+       // Verificar permissões[m
+[31m-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.id) {[m
+[32m+[m[32m      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {[m
+         return res.status(403).json({ error: 'Acesso negado' });[m
+       }[m
+ [m
+[36m@@ -334,9 +334,9 @@[m [mexport class ServiceOrderController {[m
+       [m
+       // Filtrar por usuário se não for admin[m
+       if (req.user?.userType === UserType.TECHNICIAN) {[m
+[31m-        baseQuery = serviceOrdersRef.where('technicianId', '==', req.user.id);[m
+[32m+[m[32m        baseQuery = serviceOrdersRef.where('technicianId', '==', req.user.uid);[m
+       } else if (req.user?.userType === UserType.END_USER) {[m
+[31m-        baseQuery = serviceOrdersRef.where('userId', '==', req.user.id);[m
+[32m+[m[32m        baseQuery = serviceOrdersRef.where('userId', '==', req.user.uid);[m
+       }[m
+ [m
+       const [[m
+[1mdiff --git a/backend/src/controllers/UserController.ts b/backend/src/controllers/UserController.ts[m
+[1mindex d2e2f46..596bfa2 100644[m
+[1m--- a/backend/src/controllers/UserController.ts[m
+[1m+++ b/backend/src/controllers/UserController.ts[m
+[36m@@ -6,33 +6,34 @@[m [mimport { sanitizeUser, generateId, hashPassword } from '../utils/helpers';[m
+ import * as admin from 'firebase-admin'; [m
+ [m
+ export class UserController {[m
+[31m-  async getAllUsers(req: AuthRequest, res: Response) {[m
+[31m-    try {[m
+[31m-      if (req.user?.userType !== UserType.ADMIN) {[m
+[31m-        return res.status(403).json({ error: 'Acesso negado' });[m
+[31m-      }[m
+[32m+[m[32masync getAllUsers(req: AuthRequest, res: Response) {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    if (req.user?.userType !== UserType.ADMIN) {[m
+[32m+[m[32m      return res.status(403).json({ error: 'Acesso negado' });[m
+[32m+[m[32m    }[m
+ [m
+[31m-      const usersRef = db.collection('users');[m
+[31m-      const snapshot = await usersRef.orderBy('createdAt', 'desc').get();[m
+[32m+[m[32m    const usersRef = db.collection('users');[m
+[32m+[m[32m    const snapshot = await usersRef.orderBy('createdAt', 'desc').get();[m
+ [m
+[31m-      const users = snapshot.docs.map(doc => {[m
+[31m-        const userData = doc.data() as User;[m
+[31m-        return sanitizeUser(userData);[m
+[31m-      });[m
+[32m+[m[32m    const users = snapshot.docs.map(doc => {[m
+[32m+[m[32m      const userData = doc.data() as User;[m
+[32m+[m[32m      return sanitizeUser({ ...userData, uid: doc.id });[m
+[32m+[m[32m    });[m
+ [m
+[31m-      return res.json({ users });[m
+[31m-    } catch (error) {[m
+[31m-      console.error('Erro ao buscar usuários:', error);[m
+[31m-      return res.status(500).json({ error: 'Erro interno do servidor' });[m
+[31m-    }[m
+[32m+[m[32m    return res.json({ users });[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error('Erro ao buscar usuários:', error);[m
+[32m+[m[32m    return res.status(500).json({ error: 'Erro interno do servidor' });[m
+   }[m
+[32m+[m[32m}[m
+[32m+[m
+ [m
+   async getUserById(req: AuthRequest, res: Response) {[m
+     try {[m
+       const { id } = req.params;[m
+ [m
+       // Verificar permissões[m
+[31m-      if (req.user?.userType !== UserType.ADMIN && req.user?.id !== id) {[m
+[32m+[m[32m      if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {[m
+         return res.status(403).json({ error: 'Acesso negado' });[m
+       }[m
+ [m
+[36m@@ -42,8 +43,9 @@[m [mexport class UserController {[m
+         return res.status(404).json({ error: 'Usuário não encontrado' });[m
+       }[m
+ [m
+[31m-      const userData = userDoc.data() as User;[m
+[31m-      return res.json({ user: sanitizeUser(userData) });[m
+[32m+[m[32m    const userData = userDoc.data() as User;[m
+[32m+[m[32mreturn res.json({ user: sanitizeUser({ ...userData, uid: userDoc.id }) });[m
+[32m+

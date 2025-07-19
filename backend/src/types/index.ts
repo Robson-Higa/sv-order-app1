@@ -6,7 +6,7 @@ export interface User {
   name: string;
     phone?: string;
   userType: UserType;
-  establishmentId?: string;
+  establishmentId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;

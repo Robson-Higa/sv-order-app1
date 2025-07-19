@@ -186,12 +186,19 @@ const Layout = ({ children }) => {
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100"
+                >
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-blue-600 text-white">
+                    <AvatarFallback className="bg-blue-600 text-white text-xs">
                       {getInitials(user?.name || 'U')}
                     </AvatarFallback>
                   </Avatar>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-medium text-gray-900">{user?.name}</span>
+                    <span className="text-xs text-gray-500">{getUserTypeText(user?.userType)}</span>
+                  </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>

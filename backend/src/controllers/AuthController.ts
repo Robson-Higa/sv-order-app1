@@ -2,74 +2,54 @@ import { Request, Response } from 'express';
 import { auth, db } from '../config/firebase';
 import { User, UserType, LoginRequest, RegisterRequest, AuthRequest } from '../types';
 import { hashPassword, comparePassword, generateToken, sanitizeUser, generateId } from '../utils/helpers';
+import * as admin from 'firebase-admin';
 
 export class AuthController {
-  async login(req: Request, res: Response) {
-    try {
-      const { email, password }: LoginRequest = req.body;
-      console.log('Tentando login para:', email);
+ async login(req: Request, res: Response) {
+  console.log('Recebido no login:', req.body);
 
-      const usersRef = db.collection('users');
-      const snapshot = await usersRef.where('email', '==', email).get();
+  try {
+    const { idToken } = req.body;
 
-      if (snapshot.empty) {
-        console.log('Usuário não encontrado');
-        return res.status(401).json({ error: 'Credenciais inválidas' });
-      }
-
-      const userDoc = snapshot.docs[0];
-      const userData = userDoc.data() as User;
-      console.log('Dados do usuário:', userData);
-
-      if (!userData.isActive) {
-        console.log('Conta desativada');
-        return res.status(401).json({ error: 'Conta desativada. Entre em contato com o administrador.' });
-      }
-
-      if (userData.password) {
-        // Se a senha não for hash, faça a migração automática
-        const isHash = userData.password.startsWith('$2b$');
-        let isValidPassword = false;
-
-        if (isHash) {
-          isValidPassword = await comparePassword(password, userData.password);
-        } else {
-          // Senha em texto simples: compare diretamente e migre para hash se bater
-          isValidPassword = password === userData.password;
-          if (isValidPassword) {
-            const hashed = await hashPassword(password);
-            await userDoc.ref.update({ password: hashed });
-            console.log('Senha migrada para hash para o usuário:', email);
-          }
-        }
-
-        if (!isValidPassword) {
-          console.log('Senha inválida');
-          return res.status(401).json({ error: 'Credenciais inválidas' });
-        }
-      } else {
-        console.log('Usuário sem senha cadastrada');
-        return res.status(401).json({ error: 'Credenciais inválidas' });
-      }
-
-      const token = generateToken(userData);
-      console.log('Token gerado:', token);
-
-      await userDoc.ref.update({
-        lastLogin: new Date(),
-        updatedAt: new Date()
-      });
-
-      return res.json({
-        message: 'Login realizado com sucesso',
-        token,
-        user: sanitizeUser(userData)
-      });
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return res.status(500).json({ error: 'Erro interno no servidor' });
+    if (!idToken) {
+      return res.status(400).json({ error: 'Token JWT não fornecido' });
     }
+
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+    console.log('UID decodificado do token:', uid);
+
+    // Busca no Firestore onde o campo uid == uid do Firebase
+    const snapshot = await db.collection('users').where('uid', '==', uid).get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ error: 'Usuário não encontrado no Firestore' });
+    }
+
+    const userDoc = snapshot.docs[0].data();
+    const userData: User = {
+      uid: userDoc.uid,
+      email: userDoc.email,
+      name: userDoc.name,
+      phone: userDoc.phone,
+      userType: userDoc.userType,
+      establishmentId: userDoc.establishmentId || null,
+      createdAt: userDoc.createdAt.toDate(),
+      updatedAt: userDoc.updatedAt.toDate(),
+      isActive: userDoc.isActive,
+    };  
+    return res.status(200).json({
+  token: idToken, // ou qualquer token gerado
+  user: userData
+});
+
+
+  } catch (error) {
+    console.error('Erro ao verificar token Firebase:', error);
+    return res.status(500).json({ error: 'Erro ao autenticar usuário' });
   }
+}
+
 
   async register(req: Request, res: Response) {
     try {
