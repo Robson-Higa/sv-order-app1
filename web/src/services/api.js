@@ -30,6 +30,7 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    console.error('API error:', error);
     return Promise.reject(error.response?.data || error.message);
   }
 );
@@ -37,6 +38,7 @@ api.interceptors.response.use(
 export const apiService = {
   // Auth
   login: ({ idToken }) => api.post('/auth/login', { idToken }),
+
   register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout'),
   changePassword: (currentPassword, newPassword) =>
@@ -44,7 +46,7 @@ export const apiService = {
 
   // Users
   getUsers: () => api.get('/users'),
-  getAllUsers: () => api.get('/users'),
+  //getAllUsers: () => api.get('/users'),
   getTechnicians: () => api.get('/users/type/technician'),
   createUser: (userData) => api.post('/users', userData),
   updateUser: (id, data) => api.patch(`/users/${id}`, data),
@@ -87,6 +89,23 @@ export const apiService = {
     });
     return api.get(`/reports?${params.toString()}`);
   },
+  getGeneralReport: async () => {
+    const response = await axios.get('/reports/general');
+    return response.data;
+  },
+
+  getOrdersByEstablishment: async () => {
+    const response = await axios.get('/reports/by-establishment');
+    return response;
+  },
+
+  getOrdersByTechnician: async () => {
+    const response = await axios.get('/reports/by-technician');
+    return response;
+  },
+
+  getOrdersByPeriod: (startDate, endDate) =>
+    api.get('/reports/by-period', { params: { startDate, endDate } }),
 };
 
 export async function getEndUsers() {
@@ -94,4 +113,15 @@ export async function getEndUsers() {
   return response.users;
 }
 
-// Não precisa export default api, use apiService para chamadas
+export async function fetchTechnicians() {
+  const q = query(collection(db, 'users'), where('userType', '==', 'TECHNICIAN'));
+  const snapshot = await getDocs(q);
+  const technicians = snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
+  return technicians;
+}
+
+export async function fetchEstablishments() {
+  const snapshot = await getDocs(collection(db, 'establishments'));
+  const establishments = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return establishments;
+}

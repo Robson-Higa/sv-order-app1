@@ -93,7 +93,7 @@ async getUsersByType(req: AuthRequest, res: Response) {
 
       const usersRef = db.collection('users');
       const snapshot = await usersRef
-        .where('userType', '==', UserType.TECHNICIAN)
+        .where('userType', '==', UserType.technician)
         .where('isActive', '==', true)
         .orderBy('name')
         .get();
@@ -331,7 +331,7 @@ async createUser(req: AuthRequest, res: Response) {
       // Contar usuários por tipo
       const [adminSnapshot, technicianSnapshot, endUserSnapshot] = await Promise.all([
         usersRef.where('userType', '==', UserType.ADMIN).where('isActive', '==', true).get(),
-        usersRef.where('userType', '==', UserType.TECHNICIAN).where('isActive', '==', true).get(),
+        usersRef.where('userType', '==', UserType.technician).where('isActive', '==', true).get(),
         usersRef.where('userType', '==', UserType.END_USER).where('isActive', '==', true).get()
       ]);
 

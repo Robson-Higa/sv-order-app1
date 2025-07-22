@@ -90,7 +90,7 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="lg:pl-64 w-full">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -101,9 +101,10 @@ const Layout = ({ children }) => {
 
       {/* Sidebar */}
       <div
-        className="
-    w-64 bg-white shadow-lg hidden lg:flex flex-col justify-between
-  "
+        className={`fixed z-50 inset-y-0 left-0 transform ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } transition-transform duration-300 ease-in-out
+  w-64 bg-white shadow-lg lg:static lg:translate-x-0 lg:flex flex-col justify-between`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b">
           <div className="flex items-center gap-2">

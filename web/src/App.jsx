@@ -11,6 +11,7 @@ import ServiceOrdersPage from './pages/ServiceOrdersPage';
 import ServiceOrderCreatePage from './pages/ServiceOrderCreatePage';
 import UsersAdminPage from './pages/UsersAdminPage'; // Importar UsersPage
 import EstablishmentsPage from './pages/EstablishmentsPage';
+import ReportsPage from './pages/ReportsPage'; // Importar ReportsPage
 import './App.css';
 
 // Protected Route Component
@@ -123,10 +124,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Página de Relatórios</h2>
-                <p className="text-gray-600">Esta página está em desenvolvimento.</p>
-              </div>
+              <ReportsPage /> {/* Certifique-se de importar ReportsPage corretamente */}
             </Layout>
           </ProtectedRoute>
         }
