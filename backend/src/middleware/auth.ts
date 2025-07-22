@@ -45,6 +45,9 @@ console.log('[authenticateToken] Usuário autenticado:', req.user);
 
 export const requireRole = (roles: UserType[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  
+console.log('Comparando:', roles, 'com', req.user?.userType);
+
     if (!req.user) {
       res.status(401).json({ error: 'Usuário não autenticado' });
       return;

@@ -59,6 +59,7 @@ const ServiceOrdersPage = () => {
     async function loadTechnicians() {
       try {
         const response = await apiService.getTechnicians();
+        console.log('Tecnicos:', response);
         if (response.data?.users) {
           setTechnicians(response.data.users);
         }

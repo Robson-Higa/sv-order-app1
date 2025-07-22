@@ -15,9 +15,9 @@ export interface User {
 }
 
 export enum UserType {
-  ADMIN = 'admin',
-  TECHNICIAN = 'technician',
-  END_USER = 'end_user'
+  ADMIN = 'ADMIN',
+  TECHNICIAN = 'TECHNICIAN',
+  END_USER = 'END_USER'
 }
 
 export interface Establishment {

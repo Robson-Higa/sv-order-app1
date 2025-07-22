@@ -55,7 +55,7 @@ return res.json({ user: sanitizeUser({ ...userData, uid: userDoc.id }) });
 async getUsersByType(req: AuthRequest, res: Response) {
   try {
     const { userType: rawType } = req.params;
-    const userType = rawType?.toLowerCase() as UserType;
+    const userType = rawType?.toUpperCase() as UserType;
 
     if (req.user?.userType !== UserType.ADMIN) {
       return res.status(403).json({ error: 'Acesso negado' });
