@@ -32,6 +32,8 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  console.log('user no Layout:', user);
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -79,7 +81,9 @@ const Layout = ({ children }) => {
     },
   ];
 
-  const filteredMenuItems = menuItems.filter((item) => item.roles.includes(user?.userType));
+  const filteredMenuItems = menuItems.filter((item) =>
+    item.roles.some((role) => role.toLowerCase() === user.userType.toLowerCase())
+  );
 
   const isActivePath = (path) => {
     return location.pathname === path;

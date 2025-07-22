@@ -10,6 +10,7 @@ import userRoutes from './routes/users';
 import establishmentRoutes from './routes/establishments';
 import serviceOrderRoutes from './routes/serviceOrders';
 import dashboardRoutes from './routes/dashboard';
+import tokenRoutes from './routes/auth'
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Rotas da API
+app.use('/api/auth', tokenRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/establishments', establishmentRoutes);

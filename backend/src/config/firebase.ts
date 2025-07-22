@@ -15,6 +15,7 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
   });
 }
+console.log('[Firebase] Private Key OK:', process.env.FIREBASE_PRIVATE_KEY?.includes('\n'));
 
 export const db = admin.firestore();
 export const auth = admin.auth();

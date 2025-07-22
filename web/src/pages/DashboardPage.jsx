@@ -52,8 +52,10 @@ const DashboardPage = () => {
         });
       }
 
-      if (recentResponse.recentOrders) {
-        setRecentOrders(recentResponse.recentOrders);
+      if (recentResponse.orders) {
+        setRecentOrders(recentResponse.orders);
+      } else {
+        setRecentOrders([]);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);

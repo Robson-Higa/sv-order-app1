@@ -2,7 +2,7 @@ import { Request } from 'express';
 
 export interface User {
   uid: string;
-  email: string;
+  email?: string;
   name: string;
     phone?: string;
   userType: UserType;

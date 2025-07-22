@@ -9,17 +9,13 @@ async login(req: Request, res: Response) {
   try {
     const { idToken } = req.body;
 console.log('Login recebido, idToken:', idToken);
-  console.log('Corpo recebido:', req.body);
 
     if (!idToken) {
-      console.log('Token ausente!');
       return res.status(400).json({ error: 'Token de autenticação ausente' });
     }
 
     const decodedToken = await auth.verifyIdToken(idToken);
 const { uid, email } = decodedToken;
-console.log('Token decodificado:', decodedToken);
- console.log('decodedToken:', decodedToken);
 
 
     if (!email) {
@@ -42,7 +38,7 @@ console.log('Token decodificado:', decodedToken);
 
     const token = generateToken(userData);
 
-    userDoc.ref.update({
+    await userDoc.ref.update({
       lastLogin: new Date(),
       updatedAt: new Date()
     });

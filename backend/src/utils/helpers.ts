@@ -9,14 +9,14 @@ export async function hashPassword(password: string): Promise<string> {
 export async function comparePassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
-
 export function generateToken(user: User): string {
   return jwt.sign(
-    { id: user.uid, email: user.email, userType: user.userType },
+    { uid: user.uid, email: user.email, userType: user.userType },
     process.env.JWT_SECRET || 'secret',
     { expiresIn: '7d' }
   );
 }
+
 
 export function sanitizeUser(user: User): Partial<User> {
   return {
