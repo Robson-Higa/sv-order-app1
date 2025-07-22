@@ -13,14 +13,11 @@ export const handleValidationErrors = (req: Request, res: Response, next: NextFu
   return next();
 };
 
-export const validateLogin = [
-  body('email')
-    .isEmail()
-    .withMessage('Email deve ser válido')
-    .normalizeEmail(),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Senha deve ter pelo menos 6 caracteres'),
+export const validateLoginWithIdToken = [
+  body('idToken')
+    .isString()
+    .notEmpty()
+    .withMessage('idToken é obrigatório'),
   handleValidationErrors
 ];
 

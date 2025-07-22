@@ -4,72 +4,61 @@ import { User, UserType, LoginRequest, RegisterRequest, AuthRequest } from '../t
 import { hashPassword, comparePassword, generateToken, sanitizeUser, generateId } from '../utils/helpers';
 
 export class AuthController {
-  async login(req: Request, res: Response) {
-    try {
-      const { email, password }: LoginRequest = req.body;
-      console.log('Tentando login para:', email);
+async login(req: Request, res: Response) {
+  
+  try {
+    const { idToken } = req.body;
+console.log('Login recebido, idToken:', idToken);
+  console.log('Corpo recebido:', req.body);
 
-      const usersRef = db.collection('users');
-      const snapshot = await usersRef.where('email', '==', email).get();
-
-      if (snapshot.empty) {
-        console.log('Usuário não encontrado');
-        return res.status(401).json({ error: 'Credenciais inválidas' });
-      }
-
-      const userDoc = snapshot.docs[0];
-      const userData = userDoc.data() as User;
-      console.log('Dados do usuário:', userData);
-
-      if (!userData.isActive) {
-        console.log('Conta desativada');
-        return res.status(401).json({ error: 'Conta desativada. Entre em contato com o administrador.' });
-      }
-
-      if (userData.password) {
-        // Se a senha não for hash, faça a migração automática
-        const isHash = userData.password.startsWith('$2b$');
-        let isValidPassword = false;
-
-        if (isHash) {
-          isValidPassword = await comparePassword(password, userData.password);
-        } else {
-          // Senha em texto simples: compare diretamente e migre para hash se bater
-          isValidPassword = password === userData.password;
-          if (isValidPassword) {
-            const hashed = await hashPassword(password);
-            await userDoc.ref.update({ password: hashed });
-            console.log('Senha migrada para hash para o usuário:', email);
-          }
-        }
-
-        if (!isValidPassword) {
-          console.log('Senha inválida');
-          return res.status(401).json({ error: 'Credenciais inválidas' });
-        }
-      } else {
-        console.log('Usuário sem senha cadastrada');
-        return res.status(401).json({ error: 'Credenciais inválidas' });
-      }
-
-      const token = generateToken(userData);
-      console.log('Token gerado:', token);
-
-      await userDoc.ref.update({
-        lastLogin: new Date(),
-        updatedAt: new Date()
-      });
-
-      return res.json({
-        message: 'Login realizado com sucesso',
-        token,
-        user: sanitizeUser(userData)
-      });
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return res.status(500).json({ error: 'Erro interno no servidor' });
+    if (!idToken) {
+      console.log('Token ausente!');
+      return res.status(400).json({ error: 'Token de autenticação ausente' });
     }
+
+    const decodedToken = await auth.verifyIdToken(idToken);
+const { uid, email } = decodedToken;
+console.log('Token decodificado:', decodedToken);
+ console.log('decodedToken:', decodedToken);
+
+
+    if (!email) {
+      return res.status(400).json({ error: 'Token inválido: email não encontrado' });
+    }
+
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef.where('email', '==', email).get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const userDoc = snapshot.docs[0];
+    const userData = userDoc.data() as User;
+
+    if (!userData.isActive) {
+      return res.status(403).json({ error: 'Conta desativada. Entre em contato com o administrador.' });
+    }
+
+    const token = generateToken(userData);
+
+    userDoc.ref.update({
+      lastLogin: new Date(),
+      updatedAt: new Date()
+    });
+
+    return res.json({
+      message: 'Login realizado com sucesso',
+      token,
+      user: sanitizeUser(userData)
+    });
+
+  } catch (error) {
+    console.error('Erro no login com Firebase ID Token:', error);
+    return res.status(401).json({ error: 'Token inválido ou expirado' });
   }
+}
+
 
   async register(req: Request, res: Response) {
     try {
