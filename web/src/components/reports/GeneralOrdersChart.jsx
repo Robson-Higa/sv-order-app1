@@ -1,38 +1,31 @@
-// src/components/reports/GeneralOrdersChart.jsx
 import React from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1'];
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 
 const GeneralOrdersChart = ({ data }) => {
-  if (!data || data.length === 0) return <p>Nenhum dado para exibir.</p>;
-
-  const chartData = Array.isArray(data)
-    ? data
-    : Object.entries(data).map(([status, value]) => ({ name: status, value }));
+  if (!data || !data.length) return null;
 
   return (
     <div className="w-full h-80 bg-white rounded-xl p-4 shadow">
-      <h3 className="text-lg font-semibold mb-4">Ordens por Status</h3>
+      <h3 className="text-lg font-semibold mb-4">Ordens por Mês</h3>
       <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={chartData}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            fill="#8884d8"
-            label
-          >
-            {chartData.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
+        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis allowDecimals={false} />
           <Tooltip />
           <Legend />
-        </PieChart>
+          <Bar dataKey="total" fill="#3b82f6" name="Total de Ordens" />
+          <Bar dataKey="completed" fill="#10b981" name="Concluídas" />
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

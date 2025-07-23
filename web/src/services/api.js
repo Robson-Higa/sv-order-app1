@@ -92,23 +92,12 @@ export const apiService = {
     });
     return api.get(`/reports?${params.toString()}`);
   },
-  getGeneralReport: async () => {
-    const response = await axios.get('/reports/general');
-    return response.data;
-  },
-
-  getOrdersByEstablishment: async () => {
-    const response = await axios.get('/reports/by-establishment');
-    return response;
-  },
-
-  getOrdersByTechnician: async () => {
-    const response = await axios.get('/reports/by-technician');
-    return response;
-  },
-
-  getOrdersByPeriod: (startDate, endDate) =>
-    api.get('/reports/by-period', { params: { startDate, endDate } }),
+  // services/api.js
+  // Relatórios
+  getCompletedOrdersByDate: (params) => api.get('/reports/completed-by-date', { params }),
+  getStatusPercentage: (params) => api.get('/reports/status-percentage', { params }),
+  getOrdersByEstablishment: (params) => api.get('/reports/by-establishment', { params }),
+  getOrdersByTechnician: (params) => api.get('/reports/by-technician', { params }),
 };
 
 export async function getEndUsers() {

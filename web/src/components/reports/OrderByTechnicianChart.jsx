@@ -1,75 +1,46 @@
-import React, { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { apiService } from '../../services/api';
+import React from 'react';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const OrdersByTechnicianChart = () => {
-  const [data, setData] = useState([]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+const COLORS = ['#f59e0b', '#3b82f6', '#6366f1', '#10b981', '#ef4444'];
 
-  const fetchReport = async () => {
-    try {
-      const response = await apiService.getOrdersByTechnician(startDate, endDate);
-      const rawData = response.data || response;
+const GeneralOrdersChart = ({ data, loading }) => {
+  if (loading) {
+    return (
+      <div className="w-full h-80 bg-white rounded-xl p-4 shadow flex items-center justify-center text-gray-400">
+        Carregando gráfico...
+      </div>
+    );
+  }
 
-      // Garante que é um objeto e não a resposta completa do Axios
-      if (Array.isArray(rawData)) {
-        setData(rawData);
-      } else {
-        const formatted = Object.entries(rawData).map(([name, value]) => ({
-          name,
-          value: Number(value) || 0,
-        }));
-        setData(formatted);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar relatório por técnico', error);
-    }
-  };
+  if (!data || Object.keys(data).length === 0) {
+    return (
+      <div className="w-full h-80 bg-white rounded-xl p-4 shadow flex flex-col items-center justify-center text-gray-500">
+        <p>Nenhum dado disponível</p>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    fetchReport();
-  }, []);
+  const chartData = Object.entries(data).map(([name, value]) => ({
+    name,
+    value,
+  }));
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-md mt-4">
-      <h2 className="text-lg font-semibold mb-4">Ordens por Técnico</h2>
-
-      <div className="flex gap-4 mb-4">
-        <div>
-          <label className="block text-sm">Data Inicial</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="border rounded px-2 py-1"
-          />
-        </div>
-        <div>
-          <label className="block text-sm">Data Final</label>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="border rounded px-2 py-1"
-          />
-        </div>
-        <button onClick={fetchReport} className="bg-blue-600 text-white px-4 py-2 rounded self-end">
-          Filtrar
-        </button>
-      </div>
-
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis allowDecimals={false} />
-          <Tooltip formatter={(value) => `${value} ordens`} />
-          <Bar dataKey="value" fill="#3b82f6" />
-        </BarChart>
+    <div className="w-full h-80 bg-white rounded-xl p-4 shadow">
+      <h3 className="text-lg font-semibold mb-4">Distribuição por Status</h3>
+      <ResponsiveContainer>
+        <PieChart>
+          <Pie data={chartData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label>
+            {chartData.map((_, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(val) => `${val} ordens`} />
+          <Legend />
+        </PieChart>
       </ResponsiveContainer>
     </div>
   );
 };
 
-export default OrdersByTechnicianChart;
+export default GeneralOrdersChart;

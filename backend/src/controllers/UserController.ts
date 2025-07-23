@@ -8,7 +8,7 @@ import * as admin from 'firebase-admin';
 export class UserController {
 async getAllUsers(req: AuthRequest, res: Response) {
   try {
-    if (req.user?.userType !== UserType.admin) {
+    if (req.user?.userType !== UserType.ADMIN) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
@@ -33,7 +33,7 @@ async getAllUsers(req: AuthRequest, res: Response) {
       const { id } = req.params;
 
       // Verificar permissões
-      if (req.user?.userType !== UserType.admin && req.user?.uid !== id) {
+      if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -55,12 +55,14 @@ return res.json({ user: sanitizeUser({ ...userData, uid: userDoc.id }) });
 async getUsersByType(req: AuthRequest, res: Response) {
   try {
     const { userType: rawType } = req.params;
-    const userType = rawType?.toUpperCase() as UserType;
+    const userType = rawType?.toLowerCase() as UserType;
 
-    if (req.user?.userType !== UserType.admin) {
+    // Verificar permissão do admin
+    if ((req.user?.userType || '').toLowerCase() !== UserType.ADMIN) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
+    // Validar tipo
     if (!Object.values(UserType).includes(userType)) {
       return res.status(400).json({ error: 'Tipo de usuário inválido' });
     }
@@ -84,35 +86,34 @@ async getUsersByType(req: AuthRequest, res: Response) {
   }
 }
 
-
   async getTechnicians(req: AuthRequest, res: Response) {
-    try {
-      if (req.user?.userType !== UserType.admin) {
-        return res.status(403).json({ error: 'Acesso negado' });
-      }
-
-      const usersRef = db.collection('users');
-      const snapshot = await usersRef
-        .where('userType', '==', UserType.technician)
-        .where('isActive', '==', true)
-        .orderBy('name')
-        .get();
-
-      const technicians = snapshot.docs.map(doc => {
-        const userData = doc.data() as User;
-        return sanitizeUser(userData);
-      });
-
-      res.json({ technicians });
-      return;
-    } catch (error) {
-      console.error('Erro ao buscar técnicos:', error);
-      res.status(500).json({ error: 'Erro interno do servidor' });
-      return;
+  try {
+    // Normaliza tipo do usuário logado
+    if ((req.user?.userType || '').toLowerCase() !== UserType.ADMIN) {
+      return res.status(403).json({ error: 'Acesso negado' });
     }
+
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef
+      .where('userType', '==', UserType.TECHNICIAN) // já é 'technician'
+      .where('isActive', '==', true)
+      .orderBy('name')
+      .get();
+
+    const technicians = snapshot.docs.map(doc => {
+      const userData = doc.data() as User;
+      return sanitizeUser({ ...userData, uid: doc.id });
+    });
+
+    return res.json({ technicians });
+  } catch (error) {
+    console.error('Erro ao buscar técnicos:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
+}
+
 async createUser(req: AuthRequest, res: Response) {
-    if (req.user?.userType !== UserType.admin) {
+    if (req.user?.userType !== UserType.ADMIN) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
@@ -166,7 +167,7 @@ async createUser(req: AuthRequest, res: Response) {
     const { name, email, establishmentId, isActive } = req.body;
 
     // Verificar permissões
-    if (req.user?.userType !== UserType.admin && req.user?.uid !== id) {
+    if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
@@ -201,7 +202,7 @@ async createUser(req: AuthRequest, res: Response) {
       updateData.establishmentId = establishmentId;
     }
 
-    if (req.user?.userType === UserType.admin && isActive !== undefined) {
+    if (req.user?.userType === UserType.ADMIN && isActive !== undefined) {
       updateData.isActive = isActive;
     }
 
@@ -225,7 +226,7 @@ async createUser(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
 
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -256,7 +257,7 @@ async createUser(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
 
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -283,7 +284,7 @@ async createUser(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
 
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -322,7 +323,7 @@ async createUser(req: AuthRequest, res: Response) {
 
   async getUserStats(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -330,9 +331,9 @@ async createUser(req: AuthRequest, res: Response) {
       
       // Contar usuários por tipo
       const [adminSnapshot, technicianSnapshot, endUserSnapshot] = await Promise.all([
-        usersRef.where('userType', '==', UserType.admin).where('isActive', '==', true).get(),
-        usersRef.where('userType', '==', UserType.technician).where('isActive', '==', true).get(),
-        usersRef.where('userType', '==', UserType.end_user).where('isActive', '==', true).get()
+        usersRef.where('userType', '==', UserType.ADMIN).where('isActive', '==', true).get(),
+        usersRef.where('userType', '==', UserType.TECHNICIAN).where('isActive', '==', true).get(),
+        usersRef.where('userType', '==', UserType.END_USER).where('isActive', '==', true).get()
       ]);
 
       const stats = {

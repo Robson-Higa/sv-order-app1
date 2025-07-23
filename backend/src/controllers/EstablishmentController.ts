@@ -35,7 +35,7 @@ export class EstablishmentController {
 
   async createEstablishment(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -56,7 +56,7 @@ await db.collection('establishments').add(newEstablishment);
 
   async updateEstablishment(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -80,7 +80,7 @@ await db.collection('establishments').add(newEstablishment);
 
   async deleteEstablishment(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -94,7 +94,7 @@ await db.collection('establishments').add(newEstablishment);
 
   async deactivateEstablishment(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -108,7 +108,7 @@ await db.collection('establishments').add(newEstablishment);
 
   async activateEstablishment(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -121,7 +121,7 @@ await db.collection('establishments').add(newEstablishment);
   }
   async getEstablishmentStats(req: AuthRequest, res: Response) {
   try {
-    if (req.user?.userType !== UserType.admin) {
+    if (req.user?.userType !== UserType.ADMIN) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 

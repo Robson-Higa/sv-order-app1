@@ -108,7 +108,7 @@ const { uid, email } = decodedToken;
     try {
       const { email, password, name }: RegisterRequest = req.body;
 
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Apenas administradores podem criar outros administradores' });
       }
 
@@ -127,7 +127,7 @@ const { uid, email } = decodedToken;
         email,
         password: hashedPassword,
         name,
-        userType: UserType.admin,
+        userType: UserType.ADMIN,
         createdAt: new Date(),
         updatedAt: new Date(),
         isActive: true
@@ -149,7 +149,7 @@ const { uid, email } = decodedToken;
     try {
       const { email, password, name, establishmentId }: RegisterRequest = req.body;
 
-      if (req.user?.userType !== UserType.admin) {
+      if (req.user?.userType !== UserType.ADMIN) {
         return res.status(403).json({ error: 'Apenas administradores podem criar técnicos' });
       }
 
@@ -175,7 +175,7 @@ const { uid, email } = decodedToken;
         email,
         password: hashedPassword,
         name,
-        userType: UserType.technician,
+        userType: UserType.TECHNICIAN,
         establishmentId,
         createdAt: new Date(),
         updatedAt: new Date(),

@@ -15,10 +15,11 @@ export interface User {
 }
 
 export enum UserType {
-  admin = 'ADMIN',
-  technician = 'TECHNICIAN',
- end_user = 'END_USER',
+  ADMIN = 'admin',
+  TECHNICIAN = 'technician',
+  END_USER = 'end_user',
 }
+
 
 export interface Establishment {
   id: string;
