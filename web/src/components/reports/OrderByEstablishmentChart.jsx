@@ -1,15 +1,13 @@
 // src/components/reports/OrdersByEstablishmentChart.jsx
-
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const OrdersByEstablishmentChart = ({ data }) => {
-  if (!data) return null;
+  if (!data || data.length === 0) return <p>Nenhum dado para exibir.</p>;
 
-  const chartData = Object.entries(data).map(([name, value]) => ({
-    name,
-    value,
-  }));
+  const chartData = Array.isArray(data)
+    ? data
+    : Object.entries(data).map(([name, value]) => ({ name, value }));
 
   return (
     <div className="w-full h-80 bg-white rounded-xl p-4 shadow">

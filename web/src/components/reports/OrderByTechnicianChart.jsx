@@ -9,12 +9,19 @@ const OrdersByTechnicianChart = () => {
 
   const fetchReport = async () => {
     try {
-      const result = await apiService.getOrdersByTechnician(startDate, endDate);
-      const formatted = Object.entries(result).map(([technician, count]) => ({
-        technician,
-        count,
-      }));
-      setData(formatted);
+      const response = await apiService.getOrdersByTechnician(startDate, endDate);
+      const rawData = response.data || response;
+
+      // Garante que é um objeto e não a resposta completa do Axios
+      if (Array.isArray(rawData)) {
+        setData(rawData);
+      } else {
+        const formatted = Object.entries(rawData).map(([name, value]) => ({
+          name,
+          value: Number(value) || 0,
+        }));
+        setData(formatted);
+      }
     } catch (error) {
       console.error('Erro ao carregar relatório por técnico', error);
     }
@@ -22,7 +29,7 @@ const OrdersByTechnicianChart = () => {
 
   useEffect(() => {
     fetchReport();
-  }, []); // inicial
+  }, []);
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-md mt-4">
@@ -55,10 +62,10 @@ const OrdersByTechnicianChart = () => {
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="technician" />
-          <YAxis />
-          <Tooltip />
-          <Bar dataKey="count" fill="#3b82f6" />
+          <XAxis dataKey="name" />
+          <YAxis allowDecimals={false} />
+          <Tooltip formatter={(value) => `${value} ordens`} />
+          <Bar dataKey="value" fill="#3b82f6" />
         </BarChart>
       </ResponsiveContainer>
     </div>

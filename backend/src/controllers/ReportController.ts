@@ -40,38 +40,37 @@ async getOrdersByEstablishment(req: Request, res: Response) {
     }
   }
 
-  async getOrdersByTechnician(req: Request, res: Response) {
-    try {
-      const { startDate, endDate } = req.query;
+   async getOrdersByTechnician(req: Request, res: Response) {
+  try {
+    const { startDate, endDate } = req.query;
 
-      const startTimestamp = this.parseDate(startDate as string);
-      const endTimestamp = this.parseDate(endDate as string);
+    let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> =
+      db.collection('serviceOrders');
 
-    let query: admin.firestore.Query<admin.firestore.DocumentData> = db.collection('serviceOrders');
-
-      if (startTimestamp) query = query.where('updatedAt', '>=', startTimestamp);
-      if (endTimestamp) query = query.where('updatedAt', '<=', endTimestamp);
-
-      const snapshot = await query.get();
-
-      const counts: Record<string, number> = {};
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const technician = data.technician?.name || 'Desconhecido';
-        counts[technician] = (counts[technician] || 0) + 1;
-      });
-
-      return res.status(200).json({ data: counts });
-    } catch (error) {
-      console.error('Erro ao gerar relatório por técnico:', error);
-      return res.status(500).json({ error: 'Erro ao gerar relatório por técnico' });
+    if (startDate) {
+      query = query.where('createdAt', '>=', new Date(startDate as string));
     }
+    if (endDate) {
+      query = query.where('createdAt', '<=', new Date(endDate as string));
+    }
+
+    const snapshot = await query.get();
+
+    const counts: Record<string, number> = {}; // ✅ Tipo definido
+    snapshot.forEach((doc) => {
+      const order = doc.data();
+      const technicianName = order.technician?.name || 'Sem Técnico';
+      counts[technicianName] = (counts[technicianName] || 0) + 1;
+    });
+
+    return res.json(counts);
+  } catch (error) {
+    console.error('Erro ao buscar ordens por técnico:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
+}
 
-
-
-        async getCompletedOrdersByDate(req: Request, res: Response) {
+ async getCompletedOrdersByDate(req: Request, res: Response) {
         try {
             const ordersRef = db.collection('serviceOrders');
             const snapshot = await ordersRef

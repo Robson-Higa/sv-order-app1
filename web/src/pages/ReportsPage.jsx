@@ -10,7 +10,7 @@ export default function ReportsPage() {
   const [periodType, setPeriodType] = useState('total');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [data, setData] = useState(null);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [technicians, setTechnicians] = useState([]);
@@ -20,9 +20,7 @@ export default function ReportsPage() {
 
   const getFilters = () => {
     let baseFilters = {};
-    if (periodType === 'total') {
-      baseFilters = {};
-    } else if (periodType === 'currentMonth') {
+    if (periodType === 'currentMonth') {
       const now = new Date();
       baseFilters = {
         startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
@@ -41,21 +39,16 @@ export default function ReportsPage() {
     };
   };
 
-  useEffect(() => {
-    async function loadFiltersData() {
-      try {
-        const techs = await fetchTechnicians();
-        setTechnicians(techs);
+  const formatChartData = (rawData) => {
+    if (!rawData) return [];
 
-        const estabs = await fetchEstablishments();
-        setEstablishments(estabs);
-      } catch (error) {
-        console.error('Erro ao carregar técnicos e estabelecimentos:', error);
-      }
-    }
+    if (Array.isArray(rawData)) return rawData;
 
-    loadFiltersData();
-  }, []);
+    return Object.entries(rawData).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -73,33 +66,32 @@ export default function ReportsPage() {
       }
 
       if (response) {
-        setData(response.data); // CORRETO: só o conteúdo dos dados
+        setData(formatChartData(response.data));
       } else {
-        console.error('Resposta malformada:', response);
-        setData(null);
+        setData([]);
       }
     } catch (error) {
       console.error('Erro ao buscar relatório:', error);
       setError('Erro ao buscar relatório');
-      setData(null);
+      setData([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    async function fetchFiltersData() {
+    async function loadFiltersData() {
       try {
         const techs = await fetchTechnicians();
         setTechnicians(techs);
-
         const estabs = await fetchEstablishments();
         setEstablishments(estabs);
       } catch (error) {
         console.error('Erro ao carregar técnicos e estabelecimentos:', error);
       }
     }
-    fetchFiltersData();
+
+    loadFiltersData();
   }, []);
 
   useEffect(() => {
@@ -109,121 +101,28 @@ export default function ReportsPage() {
   return (
     <div className="flex h-full min-h-screen bg-gray-50">
       <aside className="w-56 bg-white shadow-md p-4 flex flex-col space-y-6">
-        <h2 className="text-xl font-semibold mb-4">Gerar gráficos por:</h2>
-        <div>
-          <h3 className="font-semibold mb-1">Técnico</h3>
-          <select
-            className="border rounded px-2 py-1 w-full"
-            value={selectedTechnician}
-            onChange={(e) => setSelectedTechnician(e.target.value)}
-          >
-            <option value="">Todos</option>
-            {technicians.map((tech) => (
-              <option key={tech.uid} value={tech.uid}>
-                {tech.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <h3 className="font-semibold mb-1 mt-4">Estabelecimento</h3>
-          <select
-            className="border rounded px-2 py-1 w-full"
-            value={selectedEstablishment}
-            onChange={(e) => setSelectedEstablishment(e.target.value)}
-          >
-            <option value="">Todos</option>
-            {establishments.map((est) => (
-              <option key={est.id} value={est.id}>
-                {est.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
+        <h2 className="text-xl font-semibold mb-4">Relatórios</h2>
         <div>
           <h3 className="font-semibold mb-1">Categoria</h3>
-          <div className="flex flex-col space-y-2">
-            <button
-              className={`py-2 px-3 rounded hover:bg-gray-200 ${
-                reportCategory === 'establishment' ? 'bg-gray-300 font-bold' : ''
-              }`}
-              onClick={() => setReportCategory('establishment')}
-            >
-              Estabelecimento
-            </button>
-            <button
-              className={`py-2 px-3 rounded hover:bg-gray-200 ${
-                reportCategory === 'technician' ? 'bg-gray-300 font-bold' : ''
-              }`}
-              onClick={() => setReportCategory('technician')}
-            >
-              Técnico
-            </button>
-          </div>
+          <select
+            className="border rounded px-2 py-1 w-full"
+            value={reportCategory}
+            onChange={(e) => setReportCategory(e.target.value)}
+          >
+            <option value="general">Geral</option>
+            <option value="establishment">Por Estabelecimento</option>
+            <option value="technician">Por Técnico</option>
+          </select>
         </div>
-
-        <div>
-          <h3 className="font-semibold mb-1">Período</h3>
-          <div className="flex flex-col space-y-2">
-            <button
-              className={`py-2 px-3 rounded hover:bg-gray-200 ${
-                periodType === 'total' ? 'bg-gray-300 font-bold' : ''
-              }`}
-              onClick={() => setPeriodType('total')}
-            >
-              Total
-            </button>
-            <button
-              className={`py-2 px-3 rounded hover:bg-gray-200 ${
-                periodType === 'currentMonth' ? 'bg-gray-300 font-bold' : ''
-              }`}
-              onClick={() => setPeriodType('currentMonth')}
-            >
-              Mês Atual
-            </button>
-            <button
-              className={`py-2 px-3 rounded hover:bg-gray-200 ${
-                periodType === 'custom' ? 'bg-gray-300 font-bold' : ''
-              }`}
-              onClick={() => setPeriodType('custom')}
-            >
-              Período Personalizado
-            </button>
-          </div>
-        </div>
-
-        {periodType === 'custom' && (
-          <div className="flex flex-col space-y-2 mt-2">
-            <label className="font-medium">Data Inicial:</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border rounded px-2 py-1"
-            />
-            <label className="font-medium">Data Final:</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border rounded px-2 py-1"
-            />
-            <button className="bg-blue-600 text-white rounded px-3 py-1 mt-2" onClick={fetchData}>
-              Atualizar
-            </button>
-          </div>
-        )}
+        {/* Filtros adicionais aqui */}
       </aside>
 
       <main className="flex-1 p-6 overflow-auto">
         <h1 className="text-2xl font-bold mb-6">Relatórios de Atendimento</h1>
-
         {loading && <p>Carregando dados...</p>}
         {error && <p className="text-red-600">{error}</p>}
 
-        {!loading && data && (
+        {!loading && data.length > 0 && (
           <>
             {reportCategory === 'general' && <GeneralOrdersChart data={data} />}
             {reportCategory === 'establishment' && <OrdersByEstablishmentChart data={data} />}
@@ -231,7 +130,7 @@ export default function ReportsPage() {
           </>
         )}
 
-        {!loading && !data && <p>Nenhum dado para exibir.</p>}
+        {!loading && data.length === 0 && <p>Nenhum dado para exibir.</p>}
       </main>
     </div>
   );

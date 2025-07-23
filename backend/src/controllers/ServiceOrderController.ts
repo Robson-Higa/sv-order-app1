@@ -78,7 +78,7 @@ export class ServiceOrderController {
       } as ServiceOrder;
 
       // Verificar permissões
-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
+      if (req.user?.userType === UserType.end_user && serviceOrder.userId !== req.user.uid) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
       if (req.user?.userType === UserType.technician && serviceOrder.technicianId !== req.user.uid) {
@@ -195,7 +195,7 @@ export class ServiceOrderController {
       const serviceOrder = serviceOrderSnapshot.data() as ServiceOrder;
 
       // Verificar permissões
-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
+      if (req.user?.userType === UserType.end_user && serviceOrder.userId !== req.user.uid) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
       if (req.user?.userType === UserType.technician && serviceOrder.technicianId !== req.user.uid) {
@@ -207,7 +207,7 @@ export class ServiceOrderController {
       };
 
       // Campos que podem ser atualizados baseado no tipo de usuário
-      if (req.user?.userType === UserType.ADMIN) {
+      if (req.user?.userType === UserType.admin) {
         if (updateData.title) updates.title = updateData.title;
         if (updateData.description) updates.description = updateData.description;
         if (updateData.status) updates.status = updateData.status;
@@ -222,7 +222,7 @@ export class ServiceOrderController {
           }
         }
         if (updateData.technicianNotes) updates.technicianNotes = updateData.technicianNotes;
-      } else if (req.user?.userType === UserType.END_USER) {
+      } else if (req.user?.userType === UserType.end_user) {
         if (updateData.userFeedback) updates.userFeedback = updateData.userFeedback;
         if (updateData.userRating) updates.userRating = updateData.userRating;
         
@@ -259,7 +259,7 @@ export class ServiceOrderController {
       const { id } = req.params;
       const { technicianId } = req.body;
 
-      if (req.user?.userType !== UserType.ADMIN) {
+      if (req.user?.userType !== UserType.admin) {
         return res.status(403).json({ error: 'Apenas administradores podem atribuir técnicos' });
       }
 
@@ -304,7 +304,7 @@ export class ServiceOrderController {
       const serviceOrder = serviceOrderSnapshot.data() as ServiceOrder;
 
       // Verificar permissões
-      if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
+      if (req.user?.userType === UserType.end_user && serviceOrder.userId !== req.user.uid) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -335,7 +335,7 @@ export class ServiceOrderController {
       // Filtrar por usuário se não for admin
       if (req.user?.userType === UserType.technician) {
         baseQuery = serviceOrdersRef.where('technicianId', '==', req.user.uid);
-      } else if (req.user?.userType === UserType.END_USER) {
+      } else if (req.user?.userType === UserType.end_user) {
         baseQuery = serviceOrdersRef.where('userId', '==', req.user.uid);
       }
 

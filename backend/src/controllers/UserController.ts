@@ -8,7 +8,7 @@ import * as admin from 'firebase-admin';
 export class UserController {
 async getAllUsers(req: AuthRequest, res: Response) {
   try {
-    if (req.user?.userType !== UserType.ADMIN) {
+    if (req.user?.userType !== UserType.admin) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
@@ -33,7 +33,7 @@ async getAllUsers(req: AuthRequest, res: Response) {
       const { id } = req.params;
 
       // Verificar permissões
-      if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
+      if (req.user?.userType !== UserType.admin && req.user?.uid !== id) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -57,7 +57,7 @@ async getUsersByType(req: AuthRequest, res: Response) {
     const { userType: rawType } = req.params;
     const userType = rawType?.toUpperCase() as UserType;
 
-    if (req.user?.userType !== UserType.ADMIN) {
+    if (req.user?.userType !== UserType.admin) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
@@ -87,7 +87,7 @@ async getUsersByType(req: AuthRequest, res: Response) {
 
   async getTechnicians(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.userType !== UserType.ADMIN) {
+      if (req.user?.userType !== UserType.admin) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -112,7 +112,7 @@ async getUsersByType(req: AuthRequest, res: Response) {
     }
   }
 async createUser(req: AuthRequest, res: Response) {
-    if (req.user?.userType !== UserType.ADMIN) {
+    if (req.user?.userType !== UserType.admin) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
@@ -166,7 +166,7 @@ async createUser(req: AuthRequest, res: Response) {
     const { name, email, establishmentId, isActive } = req.body;
 
     // Verificar permissões
-    if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
+    if (req.user?.userType !== UserType.admin && req.user?.uid !== id) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
@@ -201,7 +201,7 @@ async createUser(req: AuthRequest, res: Response) {
       updateData.establishmentId = establishmentId;
     }
 
-    if (req.user?.userType === UserType.ADMIN && isActive !== undefined) {
+    if (req.user?.userType === UserType.admin && isActive !== undefined) {
       updateData.isActive = isActive;
     }
 
@@ -225,7 +225,7 @@ async createUser(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
 
-      if (req.user?.userType !== UserType.ADMIN) {
+      if (req.user?.userType !== UserType.admin) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -256,7 +256,7 @@ async createUser(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
 
-      if (req.user?.userType !== UserType.ADMIN) {
+      if (req.user?.userType !== UserType.admin) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -283,7 +283,7 @@ async createUser(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
 
-      if (req.user?.userType !== UserType.ADMIN) {
+      if (req.user?.userType !== UserType.admin) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -322,7 +322,7 @@ async createUser(req: AuthRequest, res: Response) {
 
   async getUserStats(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.userType !== UserType.ADMIN) {
+      if (req.user?.userType !== UserType.admin) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -330,9 +330,9 @@ async createUser(req: AuthRequest, res: Response) {
       
       // Contar usuários por tipo
       const [adminSnapshot, technicianSnapshot, endUserSnapshot] = await Promise.all([
-        usersRef.where('userType', '==', UserType.ADMIN).where('isActive', '==', true).get(),
+        usersRef.where('userType', '==', UserType.admin).where('isActive', '==', true).get(),
         usersRef.where('userType', '==', UserType.technician).where('isActive', '==', true).get(),
-        usersRef.where('userType', '==', UserType.END_USER).where('isActive', '==', true).get()
+        usersRef.where('userType', '==', UserType.end_user).where('isActive', '==', true).get()
       ]);
 
       const stats = {
