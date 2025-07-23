@@ -3,6 +3,7 @@ import { apiService } from '../services/api';
 import OrdersByTechnicianChart from '@/components/reports/OrderByTechnicianChart';
 import OrdersByEstablishmentChart from '@/components/reports/OrderByEstablishmentChart';
 import GeneralOrdersChart from '@/components/reports/GeneralOrdersChart';
+import { fetchTechnicians, fetchEstablishments } from '@/services/api';
 
 export default function ReportsPage() {
   const [reportCategory, setReportCategory] = useState('establishment');
@@ -46,10 +47,10 @@ export default function ReportsPage() {
         const techs = await fetchTechnicians();
         setTechnicians(techs);
 
-        const ests = await fetchEstablishments();
-        setEstablishments(ests);
+        const estabs = await fetchEstablishments();
+        setEstablishments(estabs);
       } catch (error) {
-        console.error('Erro ao carregar técnicos ou estabelecimentos:', error);
+        console.error('Erro ao carregar técnicos e estabelecimentos:', error);
       }
     }
 
@@ -89,13 +90,13 @@ export default function ReportsPage() {
   useEffect(() => {
     async function fetchFiltersData() {
       try {
-        const techResponse = await apiService.getTechnicians(); // deve retornar lista de técnicos
-        setTechnicians(techResponse.data || []);
+        const techs = await fetchTechnicians();
+        setTechnicians(techs);
 
-        const estResponse = await apiService.getEstablishments(); // lista de estabelecimentos
-        setEstablishments(estResponse.data || []);
+        const estabs = await fetchEstablishments();
+        setEstablishments(estabs);
       } catch (error) {
-        console.error('Erro ao carregar técnicos e estabelecimentos', error);
+        console.error('Erro ao carregar técnicos e estabelecimentos:', error);
       }
     }
     fetchFiltersData();

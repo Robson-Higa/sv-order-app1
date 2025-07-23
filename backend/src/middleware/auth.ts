@@ -63,6 +63,6 @@ console.log('Comparando:', roles, 'com', req.user?.userType);
 };
 
 export const requireAdmin = requireRole([UserType.ADMIN]);
-export const requireTechnician = requireRole([UserType.TECHNICIAN, UserType.ADMIN]);
+export const requireTechnician = requireRole([UserType.technician, UserType.ADMIN]);
 export const requireEndUser = requireRole([UserType.END_USER, UserType.ADMIN]);
 

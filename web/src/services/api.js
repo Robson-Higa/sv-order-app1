@@ -1,3 +1,6 @@
+import { getDocs, collection, query, where } from 'firebase/firestore';
+import { db } from '../services/firebase';
+
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:3000/api';
@@ -114,14 +117,13 @@ export async function getEndUsers() {
 }
 
 export async function fetchTechnicians() {
-  const q = query(collection(db, 'users'), where('userType', '==', 'TECHNICIAN'));
+  const q = query(collection(db, 'users'), where('userType', '==', 'technician'));
   const snapshot = await getDocs(q);
-  const technicians = snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
-  return technicians;
+  return snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
 }
 
+// Buscar estabelecimentos
 export async function fetchEstablishments() {
   const snapshot = await getDocs(collection(db, 'establishments'));
-  const establishments = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  return establishments;
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }

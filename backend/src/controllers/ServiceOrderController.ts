@@ -81,7 +81,7 @@ export class ServiceOrderController {
       if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
-      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.uid) {
+      if (req.user?.userType === UserType.technician && serviceOrder.technicianId !== req.user.uid) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -139,7 +139,7 @@ export class ServiceOrderController {
       let technicianId: string | undefined;
       let technicianDoc = await db.collection('users')
         .where('name', '==', technicianName)
-        .where('userType', '==', UserType.TECHNICIAN)
+        .where('userType', '==', UserType.technician)
         .limit(1)
         .get();
 
@@ -198,7 +198,7 @@ export class ServiceOrderController {
       if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
-      if (req.user?.userType === UserType.TECHNICIAN && serviceOrder.technicianId !== req.user.uid) {
+      if (req.user?.userType === UserType.technician && serviceOrder.technicianId !== req.user.uid) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
 
@@ -214,7 +214,7 @@ export class ServiceOrderController {
         if (updateData.priority) updates.priority = updateData.priority;
         if (updateData.scheduledAt) updates.scheduledAt = new Date(updateData.scheduledAt);
         if (updateData.technicianNotes) updates.technicianNotes = updateData.technicianNotes;
-      } else if (req.user?.userType === UserType.TECHNICIAN) {
+      } else if (req.user?.userType === UserType.technician) {
         if (updateData.status && [ServiceOrderStatus.IN_PROGRESS, ServiceOrderStatus.COMPLETED].includes(updateData.status)) {
           updates.status = updateData.status;
           if (updateData.status === ServiceOrderStatus.COMPLETED) {
@@ -265,7 +265,7 @@ export class ServiceOrderController {
 
       // Verificar se o técnico existe
       const technicianDoc = await db.collection('users').doc(technicianId).get();
-      if (!technicianDoc.exists || technicianDoc.data()?.userType !== UserType.TECHNICIAN) {
+      if (!technicianDoc.exists || technicianDoc.data()?.userType !== UserType.technician) {
         return res.status(400).json({ error: 'Técnico não encontrado' });
       }
 
@@ -333,7 +333,7 @@ export class ServiceOrderController {
       let baseQuery: FirebaseFirestore.Query = serviceOrdersRef;
       
       // Filtrar por usuário se não for admin
-      if (req.user?.userType === UserType.TECHNICIAN) {
+      if (req.user?.userType === UserType.technician) {
         baseQuery = serviceOrdersRef.where('technicianId', '==', req.user.uid);
       } else if (req.user?.userType === UserType.END_USER) {
         baseQuery = serviceOrdersRef.where('userId', '==', req.user.uid);

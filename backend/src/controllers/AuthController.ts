@@ -175,7 +175,7 @@ const { uid, email } = decodedToken;
         email,
         password: hashedPassword,
         name,
-        userType: UserType.TECHNICIAN,
+        userType: UserType.technician,
         establishmentId,
         createdAt: new Date(),
         updatedAt: new Date(),
