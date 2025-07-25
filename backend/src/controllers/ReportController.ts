@@ -69,7 +69,7 @@ export class ReportController {
         const data = doc.data();
         const name = data.establishment?.name || 'Sem Estabelecimento';
         countByEstablishment[name] = (countByEstablishment[name] || 0) + 1;
-      });
+   });
 
       res.json(countByEstablishment);
     } catch (error) {

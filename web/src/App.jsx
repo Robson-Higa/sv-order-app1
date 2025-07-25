@@ -13,6 +13,7 @@ import UsersAdminPage from './pages/UsersAdminPage'; // Importar UsersPage
 import EstablishmentsPage from './pages/EstablishmentsPage';
 import ReportsPage from './pages/ReportsPage'; // Importar ReportsPage
 import './App.css';
+import { Toaster } from 'react-hot-toast';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -174,6 +175,7 @@ function App() {
           <AppRoutes />
         </div>
       </Router>
+      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
     </AuthProvider>
   );
 }

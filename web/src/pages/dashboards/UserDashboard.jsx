@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Plus } from 'lucide-react';
 
+import ServiceOrderForm from '../../components/service-orders/ServiceOrderForm';
+
 export default function UserDashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -13,6 +15,8 @@ export default function UserDashboard() {
   // Ano selecionado
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+
+  const [showModal, setShowModal] = useState(false);
 
   // Modal para cancelar
   const [cancelModal, setCancelModal] = useState({ open: false, orderId: null });
@@ -143,14 +147,12 @@ export default function UserDashboard() {
         </ResponsiveContainer>
       </div>
 
-      {/* Botão Nova Ordem */}
-      <Button
-        className="bg-blue-600 text-white flex items-center"
-        onClick={() => setNewOrderModal(true)}
+      <button
+        className="bg-blue-600 text-white px-4 py-2 rounded"
+        onClick={() => setShowModal(true)}
       >
-        <Plus className="w-4 h-4 mr-2" />
         Nova Ordem
-      </Button>
+      </button>
 
       {/* Lista de ordens abertas */}
       <div className="bg-white rounded shadow p-4">
@@ -179,7 +181,17 @@ export default function UserDashboard() {
         )}
       </div>
 
-      {/* Modal Cancelamento */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded w-[500px]">
+            <ServiceOrderForm
+              onSuccess={() => setShowModal(false)}
+              onCancel={() => setShowModal(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {cancelModal.open && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded p-6 w-96">
