@@ -113,54 +113,56 @@ async getUsersByType(req: AuthRequest, res: Response) {
 }
 
 async createUser(req: AuthRequest, res: Response) {
-    if (req.user?.userType !== UserType.ADMIN) {
-      return res.status(403).json({ error: 'Acesso negado' });
-    }
-
-    const { name, email, password, phone, userType } = req.body;
-
-    if (!name || !email || !password || !userType) {
-      return res.status(400).json({ error: 'Campos obrigatórios faltando' });
-    }
-
-    try {
-      // 1. Criar usuário no Firebase Auth
-      const userRecord = await admin.auth().createUser({
-        email,
-        password,
-        displayName: name,
-        phoneNumber: phone, // opcional, formatar telefone conforme padrão E.164 se possível
-        disabled: false,
-      });
-
-      // 2. Criar documento no Firestore com o uid do Auth
-      const userData: User = {
-        uid: userRecord.uid,
-        name,
-        email,
-        phone,
-        userType,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        // adicione campos extras necessários
-      };
-
-      await db.collection('users').doc(userRecord.uid).set(userData);
-
-      // 3. Retornar sucesso e dados do usuário criado (sanitize se quiser)
-      return res.status(201).json({ user: sanitizeUser(userData) });
-    } catch (error: any) {
-      console.error('Erro ao criar usuário:', error);
-
-      // Se erro do Firebase Auth: email já existente, senha inválida, etc
-      if (error.code === 'auth/email-already-exists') {
-        return res.status(400).json({ error: 'Email já cadastrado' });
-      }
-
-      return res.status(500).json({ error: 'Erro interno do servidor' });
-    }
+  if (req.user?.userType !== UserType.ADMIN) {
+    return res.status(403).json({ error: 'Acesso negado' });
   }
+
+  const { name, email, password, phone, userType, establishmentId } = req.body;
+
+  if (!name || !email || !password || !userType) {
+    return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+  }
+
+  if (userType === UserType.END_USER && !establishmentId) {
+    return res.status(400).json({ error: 'Usuário final precisa de um estabelecimento' });
+  }
+
+  try {
+    // Criar usuário no Firebase Auth
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: name,
+      phoneNumber: phone || undefined,
+      disabled: false,
+    });
+
+    const userData: User = {
+      uid: userRecord.uid,
+      name,
+      email,
+      phone,
+      userType,
+      isActive: true,
+      establishmentId: userType === UserType.END_USER ? establishmentId : null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await db.collection('users').doc(userRecord.uid).set(userData);
+
+    return res.status(201).json({ user: sanitizeUser(userData) });
+  } catch (error: any) {
+    console.error('Erro ao criar usuário:', error);
+
+    if (error.code === 'auth/email-already-exists') {
+      return res.status(400).json({ error: 'Email já cadastrado' });
+    }
+
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
+
  async updateUser(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;

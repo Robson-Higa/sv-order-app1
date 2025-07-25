@@ -55,54 +55,51 @@ const { uid, email } = decodedToken;
   }
 }
 
+async register(req: Request, res: Response) {
+  try {
+    console.log("Dados recebidos no register:", req.body);
 
-  async register(req: Request, res: Response) {
-    try {
-      const { email, password, name, userType, establishmentId }: RegisterRequest = req.body;
+    const { idToken, name, userType, phone, establishmentId } = req.body;
 
-      const usersRef = db.collection('users');
-      const existingUser = await usersRef.where('email', '==', email).get();
-
-      if (!existingUser.empty) {
-        return res.status(400).json({ error: 'Email já está em uso' });
-      }
-
-      if (establishmentId) {
-        const establishmentDoc = await db.collection('establishments').doc(establishmentId).get();
-        if (!establishmentDoc.exists) {
-          return res.status(400).json({ error: 'Estabelecimento não encontrado' });
-        }
-      }
-
-      const hashedPassword = await hashPassword(password);
-
-      const userId = generateId();
-      const newUser: User = {
-        uid: userId,
-        email,
-        password: hashedPassword,
-        name,
-        userType,
-        establishmentId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isActive: true
-      };
-
-      await db.collection('users').doc(userId).set(newUser);
-
-      const token = generateToken(newUser);
-
-      return res.status(201).json({
-        message: 'Usuário criado com sucesso',
-        token,
-        user: sanitizeUser(newUser)
-      });
-    } catch (error) {
-      console.error('Erro no registro:', error);
-      return res.status(500).json({ error: 'Erro interno do servidor' });
+    if (!idToken || !name || !userType) {
+      return res.status(400).json({ error: 'Dados obrigatórios ausentes' });
     }
+
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const { uid, email } = decodedToken;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email inválido no token' });
+    }
+
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (userDoc.exists) {
+      return res.status(400).json({ error: 'Usuário já existe' });
+    }
+
+    const userData: User = {
+      uid,
+      email,
+      name,
+      userType,
+      phone,
+      establishmentId: establishmentId || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: true
+    };
+
+    await db.collection('users').doc(uid).set(userData);
+
+    return res.status(201).json({
+      message: 'Usuário registrado com sucesso',
+      user: sanitizeUser(userData)
+    });
+  } catch (error) {
+    console.error('Erro no registro:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
+}
 
   async registerAdmin(req: AuthRequest, res: Response) {
     try {

@@ -3,10 +3,10 @@ import { db } from '../services/firebase';
 
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE = 'http://localhost:3000/api';
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -39,17 +39,22 @@ api.interceptors.response.use(
 );
 
 export const apiService = {
-  // Auth
-  login: ({ idToken }) => api.post('/auth/login', { idToken }),
+  login: async (data) => {
+    const response = await axios.post(`${API_BASE}/auth/login`, data);
+    return response.data;
+  },
+  register: async (data) => {
+    const response = await axios.post(`${API_BASE}/auth/register`, data);
+    return response.data;
+  },
 
-  register: (userData) => api.post('/auth/register', userData),
   logout: () => api.post('/auth/logout'),
   changePassword: (currentPassword, newPassword) =>
     api.patch('/auth/change-password', { currentPassword, newPassword }),
 
   // Users
   getUsers: () => api.get('/users'),
-  //getAllUsers: () => api.get('/users'),
+  getAllUsers: () => api.get('/users'),
   getTechnicians: () => api.get('/users/type/technician'),
   createUser: (userData) => api.post('/users', userData),
   updateUser: (id, data) => api.patch(`/users/${id}`, data),
@@ -57,7 +62,10 @@ export const apiService = {
   activateUser: (id) => api.patch(`/users/${id}/activate`),
 
   // Establishments
-  getEstablishments: () => api.get('/establishments'),
+  getEstablishments: async () => {
+    const response = await axios.get(`${API_BASE}/establishments`);
+    return response.data;
+  },
   createEstablishment: (data) => api.post('/establishments', data),
   updateEstablishment: (id, data) => api.put(`/establishments/${id}`, data),
   deleteEstablishment: (id) => api.delete(`/establishments/${id}`),
