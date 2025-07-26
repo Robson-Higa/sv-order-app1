@@ -115,7 +115,7 @@ export class ServiceOrderController {
       console.log('Payload recebido:', req.body);
 
       // Validação dos campos obrigatórios
-      if (!title || !description || !establishmentName || !priority || !technicianName) {
+      if (!title || !description || !establishmentName || !priority) {
         return res.status(400).json({ error: 'Campos obrigatórios: title, description, establishmentName, priority, technicianName' });
       }
 
@@ -135,36 +135,48 @@ export class ServiceOrderController {
         establishmentId = newEstablishmentRef.id;
       }
 
-      // Buscar técnico pelo nome
-      let technicianId: string | undefined;
-      let technicianDoc = await db.collection('users')
-        .where('name', '==', technicianName)
-        .where('userType', '==', UserType.TECHNICIAN)
-        .limit(1)
-        .get();
+     let technicianId: string | undefined = undefined;
 
-      if (!technicianDoc.empty) {
-        technicianId = technicianDoc.docs[0].id;
-      } else {
-        return res.status(400).json({ error: 'Técnico não encontrado pelo nome informado' });
-      }
+if (technicianName && technicianName.trim() !== '') {
+  const technicianDoc = await db.collection('users')
+    .where('name', '==', technicianName)
+    .where('userType', '==', UserType.TECHNICIAN)
+    .limit(1)
+    .get();
+
+  if (!technicianDoc.empty) {
+    technicianId = technicianDoc.docs[0].id;
+  } else {
+    return res.status(400).json({ error: 'Técnico não encontrado pelo nome informado' });
+  }
+}
+
 
       const serviceOrderId = generateId();
       const orderNumber = generateOrderNumber();
+const userId = req.user?.uid; // do token autenticado
+const userName = req.user?.name || ''; // se você adicionar no token ou buscar no Firestore
 
-      const newServiceOrder: Partial<ServiceOrder> = {
-        id: serviceOrderId,
-        orderNumber,
-        title,
-        description,
-        priority,
-        establishmentId,
-        technicianId,
-        status: ServiceOrderStatus.OPEN,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
-      };
+const newServiceOrder: Partial<ServiceOrder> = {
+  id: serviceOrderId,
+  orderNumber,
+  title,
+  description,
+  priority,
+  establishmentId,
+  technicianId,
+  userId, // ✅ Novo campo
+  userName, // ✅ (opcional)
+  status: ServiceOrderStatus.OPEN,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+};
+
+if (technicianId) {
+  newServiceOrder.technicianId = technicianId;
+}
+
 
       await db.collection('serviceOrders').doc(serviceOrderId).set(newServiceOrder);
 

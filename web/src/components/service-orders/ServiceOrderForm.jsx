@@ -16,7 +16,8 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
   const [priority, setPriority] = useState(defaultValues.priority || 'MEDIUM');
   const [establishmentName, setEstablishmentName] = useState(defaultValues.establishmentName || '');
   const [technicianId, setTechnicianId] = useState(defaultValues.technicianId || '');
-  const [scheduledAt, setScheduledAt] = useState(defaultValues.scheduledAt || '');
+  const today = new Date().toISOString().split('T')[0];
+  const [scheduledAt, setScheduledAt] = useState(defaultValues.scheduledAt || today);
   const [establishments, setEstablishments] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -31,10 +32,27 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
 
   // Preenche estabelecimento para END_USER
   useEffect(() => {
-    if (user?.userType?.toLowerCase() === 'end_user') {
-      setEstablishmentName(user.establishmentName || '');
+    async function fetchEstablishmentName() {
+      if (user?.userType?.toLowerCase() === 'end_user' && user.establishmentId) {
+        try {
+          const headers = { Authorization: `Bearer ${token}` };
+          const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+          const res = await fetch(`${baseURL}/api/establishments/${user.establishmentId}`, {
+            headers,
+          });
+          if (!res.ok) throw new Error('Erro ao buscar estabelecimento');
+
+          const data = await res.json();
+          setEstablishmentName(data.name || '');
+        } catch (err) {
+          console.error('Erro ao buscar nome do estabelecimento:', err);
+        }
+      }
     }
-  }, [user]);
+
+    fetchEstablishmentName();
+  }, [user, token]);
 
   // Carregar listas para ADMIN
   useEffect(() => {
@@ -84,7 +102,6 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
         description: description.trim(),
         priority,
         establishmentName,
-        technicianName: selectedTechnician?.name || '',
         ...(scheduledAt && { scheduledAt }),
       };
 
@@ -141,11 +158,12 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
       <div>
         <label className="block font-medium">Agendar para:</label>
         <input
-          type="datetime-local"
+          type="date"
           value={scheduledAt}
           onChange={(e) => setScheduledAt(e.target.value)}
           className="border rounded w-full p-2"
           disabled={loading}
+          min={today} // Impede datas passadas
         />
       </div>
 

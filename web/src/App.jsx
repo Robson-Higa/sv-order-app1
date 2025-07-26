@@ -7,7 +7,7 @@ import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import ServiceOrdersPage from './pages/ServiceOrdersPage';
+import ServiceOrdersPage from './pages/orders/ServiceOrdersPage';
 import ServiceOrderCreatePage from './pages/ServiceOrderCreatePage';
 import UsersAdminPage from './pages/UsersAdminPage'; // Importar UsersPage
 import EstablishmentsPage from './pages/EstablishmentsPage';

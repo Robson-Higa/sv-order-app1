@@ -38,59 +38,66 @@ api.interceptors.response.use(
   }
 );
 
-export const apiService = {
-  login: async (data) => {
-    const response = await axios.post(`${API_BASE}/auth/login`, data);
-    return response.data;
-  },
-  register: async (data) => {
-    const response = await axios.post(`${API_BASE}/auth/register`, data);
-    return response.data;
-  },
+export function getServiceOrders(filters = {}) {
+  return api.get('/service-orders', { params: filters });
+}
 
+export const apiService = {
+  // Autenticação
+  login: (data) => axios.post(`${API_BASE}/auth/login`, data),
+  register: (data) => axios.post(`${API_BASE}/auth/register`, data),
   logout: () => api.post('/auth/logout'),
   changePassword: (currentPassword, newPassword) =>
     api.patch('/auth/change-password', { currentPassword, newPassword }),
 
-  // Users
+  // Usuários
   getUsers: () => api.get('/users'),
   getAllUsers: () => api.get('/users'),
-  getTechnicians: () => api.get('/users/type/technician'),
-  createUser: (userData) => api.post('/users', userData),
+  getTechnicians: () => api.get('/users/technicians'), // ✅ endpoint padronizado
+  getEndUsers: () => api.get('/users/type/END_USER'),
+  createUser: (data) => api.post('/users', data),
   updateUser: (id, data) => api.patch(`/users/${id}`, data),
   deleteUser: (id) => api.delete(`/users/${id}`),
   activateUser: (id) => api.patch(`/users/${id}/activate`),
 
-  // Establishments
-  getEstablishments: async () => {
-    const response = await axios.get(`${API_BASE}/establishments`);
-    return response.data;
-  },
+  // Estabelecimentos
+  getEstablishments: () => api.get('/establishments'),
   createEstablishment: (data) => api.post('/establishments', data),
   updateEstablishment: (id, data) => api.put(`/establishments/${id}`, data),
   deleteEstablishment: (id) => api.delete(`/establishments/${id}`),
   deactivateEstablishment: (id) => api.patch(`/establishments/${id}/deactivate`),
   activateEstablishment: (id) => api.patch(`/establishments/${id}/activate`),
 
-  // Service Orders
+  // Ordens de Serviço
   getServiceOrders: (filters = {}) => api.get('/service-orders', { params: filters }),
   getServiceOrder: (id) => api.get(`/service-orders/${id}`),
   createServiceOrder: (data) => api.post('/service-orders', data),
   updateServiceOrder: (id, data) => api.patch(`/service-orders/${id}`, data),
   deleteServiceOrder: (id) => api.delete(`/service-orders/${id}`),
+
+  // Atribuir técnico
   assignTechnician: (id, technicianId) =>
     api.patch(`/service-orders/${id}/assign`, { technicianId }),
+
+  // ✅ Atualizar status (pausar, concluir, etc.)
   updateStatus: (id, status, notes) => api.patch(`/service-orders/${id}/status`, { status, notes }),
+
+  // ✅ Cancelar ordem (com motivo)
+  cancelServiceOrder: (id, reason) => api.patch(`/service-orders/${id}/cancel`, { reason }),
+
+  // ✅ Confirmar conclusão
+  confirmCompletion: (id) => api.patch(`/service-orders/${id}/confirm`),
+
+  // Feedback
   addFeedback: (id, feedback, rating) =>
     api.patch(`/service-orders/${id}/feedback`, { feedback, rating }),
-  confirmCompletion: (id) => api.patch(`/service-orders/${id}/confirm`),
 
   // Dashboard
   getDashboardStats: () => api.get('/dashboard/stats'),
   getRecentOrders: () => api.get('/dashboard/recent-orders'),
   getActiveOrders: () => api.get('/dashboard/active-orders'),
 
-  // Reports
+  // Relatórios
   getReports: (filters = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -100,14 +107,11 @@ export const apiService = {
     });
     return api.get(`/reports?${params.toString()}`);
   },
-  // services/api.js
-  // Relatórios
   getCompletedOrdersByDate: (params) => api.get('/reports/completed-by-date', { params }),
   getStatusPercentage: (params) => api.get('/reports/status-percentage', { params }),
   getOrdersByEstablishment: (params) => api.get('/reports/by-establishment', { params }),
   getOrdersByTechnician: (params) => api.get('/reports/by-technician', { params }),
 };
-
 export async function getEndUsers() {
   const response = await api.get('/users/type/END_USER');
   return response.users;
