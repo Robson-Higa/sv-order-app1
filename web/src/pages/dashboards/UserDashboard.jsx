@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
 import { Button } from '../../components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Plus } from 'lucide-react';
 
 import ServiceOrderForm from '../../components/service-orders/ServiceOrderForm';
 
@@ -12,39 +11,46 @@ export default function UserDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Ano selecionado
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
   const [showModal, setShowModal] = useState(false);
 
-  // Modal para cancelar
   const [cancelModal, setCancelModal] = useState({ open: false, orderId: null });
   const [cancelReason, setCancelReason] = useState('');
-
-  // Modal para nova ordem
-  const [newOrderModal, setNewOrderModal] = useState(false);
-  const [newOrderTitle, setNewOrderTitle] = useState('');
-  const [newOrderDesc, setNewOrderDesc] = useState('');
 
   const establishmentName = user?.establishmentName;
 
   useEffect(() => {
-    if (establishmentName) loadOrders();
-  }, [establishmentName]);
+    if (user?.uid) loadOrders();
+  }, [user?.uid]);
 
   async function loadOrders() {
     setLoading(true);
     try {
-      const response = await apiService.getServiceOrders({ establishmentName });
-      setOrders(response.data || []);
+      // Busca todas as ordens relacionadas ao estabelecimento do usuário
+      // (ideal que o backend já filtre isso, mas vamos reforçar no frontend)
+      const response = await apiService.getServiceOrders();
+      setOrders(response.serviceOrders || []);
     } catch (error) {
       console.error('Erro ao buscar ordens:', error);
     }
     setLoading(false);
   }
 
-  const openOrders = orders.filter((o) => ['OPEN', 'IN_PROGRESS'].includes(o.status));
+  // Ordens do estabelecimento do usuário (filtra pelo nome do estabelecimento)
+  // Além disso, elimina ordens que não tenham userId definido (caso queira)
+  const ordersForEstablishment = orders.filter(
+    (o) => o.establishmentName === establishmentName && o.userId
+  );
+
+  // Ordens criadas pelo usuário logado
+  const userOrders = orders.filter((o) => o.userId === user?.uid);
+
+  // Ordens abertas do usuário para mostrar no card
+  const openUserOrders = userOrders.filter((o) =>
+    ['open', 'in_progress'].includes(o.status.toLowerCase())
+  );
 
   const months = [
     'Jan',
@@ -61,26 +67,59 @@ export default function UserDashboard() {
     'Dez',
   ];
 
-  // Filtrar ordens pelo ano selecionado
-  const ordersForYear = orders.filter((o) => {
-    const year = new Date(o.createdAt).getFullYear();
-    return year === selectedYear;
+  // ORDENS PARA O GRÁFICO - só as do estabelecimento
+  const ordersForYear = ordersForEstablishment.filter((o) => {
+    const date = o.createdAt?.seconds
+      ? new Date(o.createdAt.seconds * 1000)
+      : new Date(o.createdAt);
+    return date.getFullYear() === selectedYear;
   });
 
   const monthlyData = months.map((month, index) => {
     const open = ordersForYear.filter(
       (o) =>
-        ['OPEN', 'IN_PROGRESS'].includes(o.status) && new Date(o.createdAt).getMonth() === index
+        ['open', 'in_progress'].includes(o.status.toLowerCase()) &&
+        (o.createdAt?.seconds
+          ? new Date(o.createdAt.seconds * 1000).getMonth() === index
+          : new Date(o.createdAt).getMonth() === index)
     ).length;
+
     const completed = ordersForYear.filter(
-      (o) => o.status === 'COMPLETED' && new Date(o.createdAt).getMonth() === index
+      (o) =>
+        o.status.toLowerCase() === 'completed' &&
+        (o.createdAt?.seconds
+          ? new Date(o.createdAt.seconds * 1000).getMonth() === index
+          : new Date(o.createdAt).getMonth() === index)
     ).length;
+
     const cancelled = ordersForYear.filter(
-      (o) => o.status === 'CANCELLED' && new Date(o.createdAt).getMonth() === index
+      (o) =>
+        o.status.toLowerCase() === 'cancelled' &&
+        (o.createdAt?.seconds
+          ? new Date(o.createdAt.seconds * 1000).getMonth() === index
+          : new Date(o.createdAt).getMonth() === index)
     ).length;
 
     return { month, Abertas: open, Concluidas: completed, Canceladas: cancelled };
   });
+
+  // Formatação de datas para cards
+  const formatDate = (date) => {
+    if (!date) return '-';
+    if (date._seconds || date.seconds) {
+      const secs = date._seconds ?? date.seconds;
+      return new Date(secs * 1000).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    }
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
 
   async function handleCancelOrder() {
     if (!cancelReason) return alert('Informe o motivo!');
@@ -91,24 +130,6 @@ export default function UserDashboard() {
       loadOrders();
     } catch (error) {
       console.error('Erro ao cancelar ordem:', error);
-    }
-  }
-
-  async function handleCreateOrder() {
-    if (!newOrderTitle || !newOrderDesc) return alert('Preencha título e descrição');
-    try {
-      await apiService.createServiceOrder({
-        title: newOrderTitle,
-        description: newOrderDesc,
-        establishmentName,
-        userName: user?.name || 'Usuário',
-      });
-      setNewOrderModal(false);
-      setNewOrderTitle('');
-      setNewOrderDesc('');
-      loadOrders();
-    } catch (error) {
-      console.error('Erro ao criar ordem:', error);
     }
   }
 
@@ -131,9 +152,11 @@ export default function UserDashboard() {
         </select>
       </div>
 
-      {/* Gráfico de Barras */}
+      {/* Gráfico */}
       <div className="bg-white rounded shadow p-4">
-        <h2 className="text-lg font-semibold mb-4">Ordens por Mês ({selectedYear})</h2>
+        <h2 className="text-lg font-semibold mb-4">
+          Ordens do Estabelecimento por Mês ({selectedYear})
+        </h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={monthlyData}>
             <XAxis dataKey="month" />
@@ -147,6 +170,7 @@ export default function UserDashboard() {
         </ResponsiveContainer>
       </div>
 
+      {/* Botão Nova Ordem */}
       <button
         className="bg-blue-600 text-white px-4 py-2 rounded"
         onClick={() => setShowModal(true)}
@@ -154,20 +178,22 @@ export default function UserDashboard() {
         Nova Ordem
       </button>
 
-      {/* Lista de ordens abertas */}
+      {/* Lista de ordens abertas do usuário */}
       <div className="bg-white rounded shadow p-4">
-        <h2 className="text-lg font-semibold mb-4">Ordens em Aberto</h2>
+        <h2 className="text-lg font-semibold mb-4">Ordens em Aberto (Minhas)</h2>
         {loading ? (
           <p>Carregando...</p>
-        ) : openOrders.length === 0 ? (
+        ) : openUserOrders.length === 0 ? (
           <p>Nenhuma ordem em aberto.</p>
         ) : (
           <ul className="space-y-3">
-            {openOrders.map((order) => (
+            {openUserOrders.map((order) => (
               <li key={order.id} className="flex justify-between items-center border-b pb-2">
                 <div>
                   <p className="font-medium">{order.title}</p>
-                  <small>Status: {order.status}</small>
+                  <small>
+                    Status: {order.status} | Criado em: {formatDate(order.createdAt)}
+                  </small>
                 </div>
                 <Button
                   variant="destructive"
@@ -181,17 +207,22 @@ export default function UserDashboard() {
         )}
       </div>
 
+      {/* Modal Nova Ordem */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
           <div className="bg-white p-6 rounded w-[500px]">
             <ServiceOrderForm
-              onSuccess={() => setShowModal(false)}
+              onSuccess={() => {
+                setShowModal(false);
+                loadOrders();
+              }}
               onCancel={() => setShowModal(false)}
             />
           </div>
         </div>
       )}
 
+      {/* Modal Cancelamento */}
       {cancelModal.open && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded p-6 w-96">
@@ -207,38 +238,6 @@ export default function UserDashboard() {
               <Button onClick={() => setCancelModal({ open: false, orderId: null })}>Fechar</Button>
               <Button className="bg-red-500 text-white" onClick={handleCancelOrder}>
                 Confirmar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Nova Ordem */}
-      {newOrderModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded p-6 w-96">
-            <h3 className="font-bold mb-4">Nova Ordem</h3>
-            <input
-              type="text"
-              className="border w-full p-2 mb-3"
-              placeholder="Título"
-              value={newOrderTitle}
-              onChange={(e) => setNewOrderTitle(e.target.value)}
-            />
-            <textarea
-              className="border w-full p-2 mb-3"
-              rows="3"
-              placeholder="Descrição"
-              value={newOrderDesc}
-              onChange={(e) => setNewOrderDesc(e.target.value)}
-            />
-            <p className="text-sm text-gray-500 mb-4">
-              Estabelecimento: <strong>{establishmentName}</strong>
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button onClick={() => setNewOrderModal(false)}>Cancelar</Button>
-              <Button className="bg-blue-600 text-white" onClick={handleCreateOrder}>
-                Criar
               </Button>
             </div>
           </div>

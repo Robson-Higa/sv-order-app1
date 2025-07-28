@@ -5,62 +5,37 @@ import { generateId, generateOrderNumber } from '../utils/helpers';
 import { Query } from 'firebase-admin/firestore';
 
 export class ServiceOrderController {
-  async getAllServiceOrders(req: Request, res: Response) {
+  async getAllServiceOrders(req: AuthRequest, res: Response) {
   try {
-    const { status, priority, technicianId, establishmentId } = req.query;
+   const { status, priority, technicianId, establishmentId, scope } = req.query;
 
     let query: FirebaseFirestore.Query = db.collection('serviceOrders');
 
-    if (status) {
-      query = query.where('status', '==', status);
-    }
-    if (priority) {
-      query = query.where('priority', '==', priority);
-    }
-    if (technicianId) {
-      query = query.where('technicianId', '==', technicianId);
-    }
-    if (establishmentId) {
-      query = query.where('establishmentId', '==', establishmentId);
-    }
+    if (status) query = query.where('status', '==', status);
+if (priority) query = query.where('priority', '==', priority);
+if (technicianId) query = query.where('technicianId', '==', technicianId);
+if (establishmentId) query = query.where('establishmentId', '==', establishmentId);
 
-    const ordersSnap = await query.get();
-
-    const orders = await Promise.all(
-      ordersSnap.docs.map(async (doc) => {
-        const data = doc.data();
-
-        const order: any = {
-          id: doc.id,
-          ...data,
-          technician: undefined,
-        };
-
-        if (data.technicianId) {
-          const technicianRef = db.collection('users').doc(data.technicianId);
-          const techDoc = await technicianRef.get();
-
-          if (techDoc.exists) {
-            const techData = techDoc.data();
-            order.technician = {
-              name: techData?.name || '',
-              email: techData?.email || '',
-            };
-          }
-        }
-
-        return order;
-      })
-    );
-
-    res.status(200).json({ serviceOrders: orders });
-  } catch (error) {
-    console.error('Erro ao buscar ordens:', error);
-    res.status(500).json({ error: 'Erro ao buscar ordens' });
-  }
+if (req.user?.userType === UserType.END_USER) {
+  query = query.where('userId', '==', req.user.uid);
+} else if (req.user?.establishmentId) {
+  query = query.where('establishmentId', '==', req.user.establishmentId);
 }
 
 
+    const ordersSnap = await query.get();
+
+    const orders = ordersSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    return res.status(200).json({ serviceOrders: orders });
+  } catch (error) {
+    console.error('Erro ao buscar ordens:', error);
+    return res.status(500).json({ error: 'Erro ao buscar ordens' });
+  }
+}
 
   async getServiceOrderById(req: AuthRequest, res: Response) {
     try {
