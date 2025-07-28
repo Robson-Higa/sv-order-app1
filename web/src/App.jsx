@@ -1,21 +1,18 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext'; // <-- Adicione useAuth aqui
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
-
-// Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ServiceOrdersPage from './pages/orders/ServiceOrdersPage';
 import ServiceOrderCreatePage from './pages/ServiceOrderCreatePage';
-import UsersAdminPage from './pages/UsersAdminPage'; // Importar UsersPage
+import UsersAdminPage from './pages/UsersAdminPage';
 import EstablishmentsPage from './pages/EstablishmentsPage';
-import ReportsPage from './pages/ReportsPage'; // Importar ReportsPage
+import ReportsPage from './pages/ReportsPage';
 import './App.css';
 import { Toaster } from 'react-hot-toast';
 
-// Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -30,7 +27,6 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-// Public Route Component (redirects to dashboard if authenticated)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
@@ -45,11 +41,21 @@ const PublicRoute = ({ children }) => {
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
 };
 
-// App Routes Component
 const AppRoutes = () => {
+  const { loading } = useAuth();
+
+  // ✅ Aguarda carregar para evitar que login apareça junto com dashboard
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* Public */}
       <Route
         path="/login"
         element={
@@ -67,7 +73,7 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Protected Routes */}
+      {/* Protected */}
       <Route
         path="/dashboard"
         element={
@@ -98,8 +104,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
-      {/* Placeholder routes for other pages */}
       <Route
         path="/users"
         element={
@@ -125,7 +129,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <ReportsPage /> {/* Certifique-se de importar ReportsPage corretamente */}
+              <ReportsPage />
             </Layout>
           </ProtectedRoute>
         }
@@ -135,45 +139,29 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <div className="text-center py-12">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Página de Perfil</h2>
-                <p className="text-gray-600">Esta página está em desenvolvimento.</p>
-              </div>
+              <div className="p-6 text-center">Página de Perfil</div>
             </Layout>
           </ProtectedRoute>
         }
       />
 
-      {/* Default redirect */}
+      {/* Redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      {/* 404 Route */}
+      {/* 404 */}
       <Route
         path="*"
-        element={
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-              <p className="text-gray-600 mb-4">Página não encontrada</p>
-              <a href="/dashboard" className="text-blue-600 hover:text-blue-500 font-medium">
-                Voltar ao Dashboard
-              </a>
-            </div>
-          </div>
-        }
+        element={<div className="text-center p-10">404 - Página não encontrada</div>}
       />
     </Routes>
   );
 };
 
-// Main App Component
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
-          <AppRoutes />
-        </div>
+        <AppRoutes />
       </Router>
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
     </AuthProvider>

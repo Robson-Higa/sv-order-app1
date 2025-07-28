@@ -8,27 +8,55 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [token, setToken] = useState(() => {
+    const storedToken = localStorage.getItem('token');
+    return storedToken && storedToken !== 'undefined' ? storedToken : null;
+  });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ✅ Mantém usuário logado se token válido
+  function safeParseJSON(json) {
+    try {
+      return JSON.parse(json);
+    } catch {
+      return null;
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('Firebase User:', firebaseUser);
       if (firebaseUser) {
         try {
           const idToken = await firebaseUser.getIdToken();
+          console.log('Firebase ID Token:', idToken);
           const savedUser = localStorage.getItem('user');
           const savedToken = localStorage.getItem('token');
+          const validToken = savedToken && savedToken !== 'undefined' ? savedToken : null;
 
-          if (!savedUser || !savedToken) {
+          const parsedUser = safeParseJSON(savedUser);
+
+          console.log('LocalStorage user:', parsedUser);
+          console.log('LocalStorage token:', savedToken);
+
+          if (!parsedUser || !savedToken) {
             const apiResponse = await apiService.login({ idToken });
-            localStorage.setItem('user', JSON.stringify(apiResponse.user));
-            localStorage.setItem('token', apiResponse.token);
-            setUser(apiResponse.user);
-            setToken(apiResponse.token);
+            console.log('API Login Response:', apiResponse);
+
+            const userFromApi = apiResponse.data?.user;
+            const tokenFromApi = apiResponse.data?.token;
+
+            if (userFromApi && tokenFromApi) {
+              localStorage.setItem('user', JSON.stringify(userFromApi));
+              localStorage.setItem('token', tokenFromApi);
+              setUser(userFromApi);
+              setToken(tokenFromApi);
+            } else {
+              throw new Error('Resposta inválida do servidor');
+            }
           } else {
-            setUser(JSON.parse(savedUser));
+            setUser(parsedUser);
             setToken(savedToken);
           }
         } catch (error) {
@@ -48,7 +76,13 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Login
+  console.log('Auth State:', {
+    user,
+    token,
+    isAuthenticated: !!token && !!user,
+    loading,
+  });
+
   const login = useCallback(async ({ email, password }) => {
     setLoading(true);
     setError(null);
@@ -58,12 +92,17 @@ export const AuthProvider = ({ children }) => {
       const idToken = await firebaseUser.getIdToken();
 
       const apiResponse = await apiService.login({ idToken });
-      localStorage.setItem('token', apiResponse.token);
-      localStorage.setItem('user', JSON.stringify(apiResponse.user));
-      setToken(apiResponse.token);
-      setUser(apiResponse.user);
+      // Supondo que apiResponse tenha o formato: { user: ..., token: ... }
 
-      return apiResponse.user;
+      if (apiResponse.user && apiResponse.token) {
+        localStorage.setItem('user', JSON.stringify(apiResponse.user));
+        localStorage.setItem('token', apiResponse.token);
+        setUser(apiResponse.user);
+        setToken(apiResponse.token);
+        return apiResponse.user;
+      } else {
+        throw new Error('Resposta inválida do servidor');
+      }
     } catch (err) {
       console.error('Erro no login:', err);
       let message = 'Erro ao fazer login';
@@ -76,7 +115,6 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  // ✅ Logout
   const logout = useCallback(async () => {
     try {
       await signOut(auth);

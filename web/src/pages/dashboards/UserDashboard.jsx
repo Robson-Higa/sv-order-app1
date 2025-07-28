@@ -22,27 +22,50 @@ export default function UserDashboard() {
   const establishmentName = user?.establishmentName;
 
   useEffect(() => {
-    if (user?.uid) loadOrders();
-  }, [user?.uid]);
+    if (user?.uid && user?.establishmentId) {
+      loadOrders();
+      loadEstablishmentOrders();
+    }
+  }, [user?.uid, user?.establishmentId]);
+
+  // const [orders, setOrders] = useState([]); // ordens do usuário
+  const [establishmentOrders, setEstablishmentOrders] = useState([]); // ordens do estabelecimento
+
+  useEffect(() => {
+    if (user?.uid && user?.establishmentId) {
+      loadOrders();
+      loadEstablishmentOrders();
+    }
+  }, [user?.uid, user?.establishmentId]);
 
   async function loadOrders() {
     setLoading(true);
     try {
-      // Busca todas as ordens relacionadas ao estabelecimento do usuário
-      // (ideal que o backend já filtre isso, mas vamos reforçar no frontend)
-      const response = await apiService.getServiceOrders();
+      // Somente ordens do usuário
+      const response = await apiService.getServiceOrders({ userId: user.uid });
+
       setOrders(response.serviceOrders || []);
     } catch (error) {
-      console.error('Erro ao buscar ordens:', error);
+      console.error('Erro ao buscar ordens do usuário:', error);
     }
     setLoading(false);
   }
 
+  async function loadEstablishmentOrders() {
+    try {
+      // Buscar ordens do estabelecimento
+      const response = await apiService.getServiceOrders({
+        establishmentId: user.establishmentId,
+      });
+      setEstablishmentOrders(response.serviceOrders || []);
+    } catch (error) {
+      console.error('Erro ao buscar ordens do estabelecimento:', error);
+    }
+  }
+
   // Ordens do estabelecimento do usuário (filtra pelo nome do estabelecimento)
   // Além disso, elimina ordens que não tenham userId definido (caso queira)
-  const ordersForEstablishment = orders.filter(
-    (o) => o.establishmentName === establishmentName && o.userId
-  );
+  const ordersForEstablishment = establishmentOrders;
 
   // Ordens criadas pelo usuário logado
   const userOrders = orders.filter((o) => o.userId === user?.uid);

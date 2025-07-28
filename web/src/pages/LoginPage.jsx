@@ -14,13 +14,13 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       setError('Por favor, preencha todos os campos');
       return;
@@ -31,7 +31,7 @@ const LoginPage = () => {
 
     try {
       await login({ email, password }); // Passe como objeto
-      navigate('/dashboard');
+      //navigate('/dashboard');
     } catch (error) {
       setError(error.message || 'Erro ao fazer login. Verifique suas credenciais.');
     } finally {
@@ -46,12 +46,8 @@ const LoginPage = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
             <Building2 className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Sistema de Gestão
-          </h1>
-          <p className="text-gray-600">
-            Ordens de Serviço
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Sistema de Gestão</h1>
+          <p className="text-gray-600">Ordens de Serviço</p>
         </div>
 
         <Card>
@@ -60,9 +56,7 @@ const LoginPage = () => {
               <LogIn className="w-5 h-5" />
               Entrar na sua conta
             </CardTitle>
-            <CardDescription>
-              Digite suas credenciais para acessar o sistema
-            </CardDescription>
+            <CardDescription>Digite suas credenciais para acessar o sistema</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -98,11 +92,7 @@ const LoginPage = () => {
                 />
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={loading}
-              >
+              <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -120,10 +110,7 @@ const LoginPage = () => {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Não tem uma conta?{' '}
-                <Link 
-                  to="/register" 
-                  className="text-blue-600 hover:text-blue-500 font-medium"
-                >
+                <Link to="/register" className="text-blue-600 hover:text-blue-500 font-medium">
                   Registre-se aqui
                 </Link>
               </p>
@@ -132,9 +119,7 @@ const LoginPage = () => {
         </Card>
 
         <div className="mt-8 text-center">
-          <p className="text-xs text-gray-500">
-            Sistema de Gestão de Ordens de Serviço v1.0
-          </p>
+          <p className="text-xs text-gray-500">Sistema de Gestão de Ordens de Serviço v1.0</p>
         </div>
       </div>
     </div>
@@ -142,4 +127,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-

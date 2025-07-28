@@ -32,46 +32,46 @@ export interface Establishment {
   isActive: boolean;
 }
 
-export interface ServiceOrder {
-  id: string;
-  orderNumber: string;
-  title: string;
-  description: string;
-  priority: Priority;
-  status: ServiceOrderStatus;
-  establishmentId?: string;
-  establishmentName: string;
-  technicianId?: string;
-  technicianName: string;
-   technician?: {
+  export interface ServiceOrder {
     id: string;
-    name: string;
-    email?: string;
-  };
-  user?: {
-    id: string;
-    name: string;
-    email?: string;
-  };
-  establishment?: {
-    id: string;
-    name: string;
-    address?: string;
-  };
-  userId?: string;
-  userName?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  completedAt?: Date;
-  confirmedAt?: Date;
-  scheduledAt?: Date; // Novo campo para agendamento do atendimento
-  technicianNotes?: string;
-  userFeedback?: string;
-  userRating?: number;
-  cancellationReason?: string;
-  feedback?: string;
-  useConfimed?: boolean;
-}
+    orderNumber: string;
+    title: string;
+    description: string;
+    priority: Priority;
+    status: ServiceOrderStatus;
+    establishmentId?: string;
+    establishmentName: string;
+    technicianId?: string;
+    technicianName: string;
+    technician?: {
+      id: string;
+      name: string;
+      email?: string;
+    };
+    user?: {
+      id: string;
+      name: string;
+      email?: string;
+    };
+    establishment?: {
+      id: string;
+      name: string;
+      address?: string;
+    };
+    userId?: string;
+    userName?: string;
+    createdAt: Date;
+    updatedAt: Date;
+    completedAt?: Date;
+    confirmedAt?: Date;
+    scheduledAt?: Date; // Novo campo para agendamento do atendimento
+    technicianNotes?: string;
+    userFeedback?: string;
+    userRating?: number;
+    cancellationReason?: string;
+    feedback?: string;
+    useConfimed?: boolean;
+  }
 
 export enum ServiceOrderStatus {
   OPEN = 'open',

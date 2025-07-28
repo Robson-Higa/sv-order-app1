@@ -8,20 +8,22 @@ export class ServiceOrderController {
   async getAllServiceOrders(req: AuthRequest, res: Response) {
   try {
    const { status, priority, technicianId, establishmentId, scope } = req.query;
+let query: FirebaseFirestore.Query = db.collection('serviceOrders');
 
-    let query: FirebaseFirestore.Query = db.collection('serviceOrders');
-
-    if (status) query = query.where('status', '==', status);
+if (status) query = query.where('status', '==', status);
 if (priority) query = query.where('priority', '==', priority);
 if (technicianId) query = query.where('technicianId', '==', technicianId);
-if (establishmentId) query = query.where('establishmentId', '==', establishmentId);
 
-if (req.user?.userType === UserType.END_USER) {
+// Ajuste aqui: só filtra establishmentId do req.query se for ADMIN, ou ignora para END_USER
+if (req.user?.userType === UserType.ADMIN && establishmentId) {
+  query = query.where('establishmentId', '==', establishmentId);
+} else if (req.user?.userType === UserType.END_USER) {
+  // usuário final só vê as ordens dele
   query = query.where('userId', '==', req.user.uid);
 } else if (req.user?.establishmentId) {
+  // técnicos e outros usuários veem ordens do seu estabelecimento
   query = query.where('establishmentId', '==', req.user.establishmentId);
 }
-
 
     const ordersSnap = await query.get();
 
@@ -83,89 +85,94 @@ if (req.user?.userType === UserType.END_USER) {
     }
   }
 
-  async createServiceOrder(req: AuthRequest, res: Response) {
-    try {
-      const { title, description, priority, establishmentName, technicianName, scheduledAt } = req.body;
+ async createServiceOrder(req: AuthRequest, res: Response) {
+  try {
+    const { title, description, priority, establishmentName, technicianName, scheduledAt } = req.body;
 
-      console.log('Payload recebido:', req.body);
+    console.log('Payload recebido:', req.body);
 
-      // Validação dos campos obrigatórios
-      if (!title || !description || !establishmentName || !priority) {
-        return res.status(400).json({ error: 'Campos obrigatórios: title, description, establishmentName, priority, technicianName' });
-      }
+    // Validação dos campos obrigatórios
+    if (!title || !description || !establishmentName || !priority) {
+      return res.status(400).json({
+        error: 'Campos obrigatórios: title, description, establishmentName, priority'
+      });
+    }
 
-      // Buscar ou criar estabelecimento pelo nome
-      let establishmentId: string | undefined;
-      let establishmentDoc = await db.collection('establishments')
-        .where('name', '==', establishmentName)
+    // Buscar ou criar estabelecimento pelo nome
+    let establishmentId: string | undefined;
+    const establishmentDoc = await db.collection('establishments')
+      .where('name', '==', establishmentName)
+      .limit(1)
+      .get();
+
+    if (!establishmentDoc.empty) {
+      establishmentId = establishmentDoc.docs[0].id;
+    } else {
+      const newEstablishmentRef = db.collection('establishments').doc();
+      await newEstablishmentRef.set({
+        name: establishmentName,
+        createdAt: new Date(),
+      });
+      establishmentId = newEstablishmentRef.id;
+    }
+
+    // Buscar técnico pelo nome (se informado)
+    let technicianId: string | null = null;
+    if (technicianName && technicianName.trim() !== '') {
+      const technicianDoc = await db.collection('users')
+        .where('name', '==', technicianName)
+        .where('userType', '==', UserType.TECHNICIAN)
         .limit(1)
         .get();
 
-      if (!establishmentDoc.empty) {
-        establishmentId = establishmentDoc.docs[0].id;
+      if (!technicianDoc.empty) {
+        technicianId = technicianDoc.docs[0].id;
       } else {
-        // Cria novo estabelecimento se não existir
-        const newEstablishmentRef = db.collection('establishments').doc();
-        await newEstablishmentRef.set({ name: establishmentName });
-        establishmentId = newEstablishmentRef.id;
+        return res.status(400).json({ error: 'Técnico não encontrado pelo nome informado' });
       }
-
-     let technicianId: string | undefined = undefined;
-
-if (technicianName && technicianName.trim() !== '') {
-  const technicianDoc = await db.collection('users')
-    .where('name', '==', technicianName)
-    .where('userType', '==', UserType.TECHNICIAN)
-    .limit(1)
-    .get();
-
-  if (!technicianDoc.empty) {
-    technicianId = technicianDoc.docs[0].id;
-  } else {
-    return res.status(400).json({ error: 'Técnico não encontrado pelo nome informado' });
-  }
-}
-
-
-      const serviceOrderId = generateId();
-      const orderNumber = generateOrderNumber();
-const userId = req.user?.uid; // do token autenticado
-const userName = req.user?.name || ''; // se você adicionar no token ou buscar no Firestore
-
-const newServiceOrder: Partial<ServiceOrder> = {
-  id: serviceOrderId,
-  orderNumber,
-  title,
-  description,
-  priority,
-  establishmentId,
-  technicianId,
-  userId, // ✅ Novo campo
-  userName, // ✅ (opcional)
-  status: ServiceOrderStatus.OPEN,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
-};
-
-if (technicianId) {
-  newServiceOrder.technicianId = technicianId;
-}
-
-
-      await db.collection('serviceOrders').doc(serviceOrderId).set(newServiceOrder);
-
-      res.status(201).json({
-        message: 'Ordem de serviço criada com sucesso',
-        serviceOrder: newServiceOrder
-      });
-      return;
-    } catch (error) {
-      console.error('Erro ao criar ordem de serviço:', error);
-      res.status(500).json({ error: 'Erro interno do servidor', details: error instanceof Error ? error.message : error });
-      return;
     }
+
+    const serviceOrderId = generateId();
+    const orderNumber = generateOrderNumber();
+    const userId = req.user?.uid || '';
+    const userName = req.user?.name || '';
+
+    // Criar objeto sem campos undefined
+    const newServiceOrder: Record<string, any> = {
+      id: serviceOrderId,
+      orderNumber,
+      title,
+      description,
+      priority,
+      establishmentId,
+      establishmentName,
+      userId,
+      userName,
+      status: ServiceOrderStatus.OPEN,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : null
+    };
+
+    if (technicianId) {
+      newServiceOrder.technicianId = technicianId;
+      newServiceOrder.technicianName = technicianName;
+    }
+
+    await db.collection('serviceOrders').doc(serviceOrderId).set(newServiceOrder);
+
+    return res.status(201).json({
+      message: 'Ordem de serviço criada com sucesso',
+      serviceOrder: newServiceOrder
+    });
+  } catch (error) {
+    console.error('Erro ao criar ordem de serviço:', error);
+    return res.status(500).json({
+      error: 'Erro interno do servidor',
+      details: error instanceof Error ? error.message : error
+    });
   }
+}
 
   async updateServiceOrder(req: AuthRequest, res: Response) {
     try {
