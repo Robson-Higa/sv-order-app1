@@ -11,7 +11,6 @@ export interface User {
   updatedAt: Date;
   isActive: boolean;
   password?: string;
-  lastLogin?: Date;
 }
 
 export enum UserType {
@@ -152,5 +151,6 @@ export interface AdminStats extends DashboardStats {
 export interface AuthRequest extends Request {
   user?: User;
 }
+
 
 

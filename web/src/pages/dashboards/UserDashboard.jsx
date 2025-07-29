@@ -10,40 +10,39 @@ export default function UserDashboard() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [establishmentOrders, setEstablishmentOrders] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [cancelModal, setCancelModal] = useState({ open: false, orderId: null });
+  const [cancelReason, setCancelReason] = useState('');
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
-  const [showModal, setShowModal] = useState(false);
-
-  const [cancelModal, setCancelModal] = useState({ open: false, orderId: null });
-  const [cancelReason, setCancelReason] = useState('');
-
-  const establishmentName = user?.establishmentName;
-
   useEffect(() => {
     if (user?.uid && user?.establishmentId) {
       loadOrders();
       loadEstablishmentOrders();
+      loadStats();
     }
   }, [user?.uid, user?.establishmentId]);
 
-  // const [orders, setOrders] = useState([]); // ordens do usuário
-  const [establishmentOrders, setEstablishmentOrders] = useState([]); // ordens do estabelecimento
-
-  useEffect(() => {
-    if (user?.uid && user?.establishmentId) {
-      loadOrders();
-      loadEstablishmentOrders();
+  async function loadStats() {
+    try {
+      const response = await apiService.getServiceOrderStats({
+        establishmentId: user.establishmentId,
+      });
+      setStats(response.stats);
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas:', error);
     }
-  }, [user?.uid, user?.establishmentId]);
+  }
 
   async function loadOrders() {
     setLoading(true);
     try {
       // Somente ordens do usuário
       const response = await apiService.getServiceOrders({ userId: user.uid });
-
       setOrders(response.serviceOrders || []);
     } catch (error) {
       console.error('Erro ao buscar ordens do usuário:', error);
@@ -63,10 +62,6 @@ export default function UserDashboard() {
     }
   }
 
-  // Ordens do estabelecimento do usuário (filtra pelo nome do estabelecimento)
-  // Além disso, elimina ordens que não tenham userId definido (caso queira)
-  const ordersForEstablishment = establishmentOrders;
-
   // Ordens criadas pelo usuário logado
   const userOrders = orders.filter((o) => o.userId === user?.uid);
 
@@ -75,86 +70,32 @@ export default function UserDashboard() {
     ['open', 'in_progress'].includes(o.status.toLowerCase())
   );
 
-  const months = [
-    'Jan',
-    'Fev',
-    'Mar',
-    'Abr',
-    'Mai',
-    'Jun',
-    'Jul',
-    'Ago',
-    'Set',
-    'Out',
-    'Nov',
-    'Dez',
-  ];
-
-  // ORDENS PARA O GRÁFICO - só as do estabelecimento
-  const ordersForYear = ordersForEstablishment.filter((o) => {
-    const date = o.createdAt?.seconds
-      ? new Date(o.createdAt.seconds * 1000)
-      : new Date(o.createdAt);
-    return date.getFullYear() === selectedYear;
-  });
-
-  const monthlyData = months.map((month, index) => {
-    const open = ordersForYear.filter(
-      (o) =>
-        ['open', 'in_progress'].includes(o.status.toLowerCase()) &&
-        (o.createdAt?.seconds
-          ? new Date(o.createdAt.seconds * 1000).getMonth() === index
-          : new Date(o.createdAt).getMonth() === index)
-    ).length;
-
-    const completed = ordersForYear.filter(
-      (o) =>
-        o.status.toLowerCase() === 'completed' &&
-        (o.createdAt?.seconds
-          ? new Date(o.createdAt.seconds * 1000).getMonth() === index
-          : new Date(o.createdAt).getMonth() === index)
-    ).length;
-
-    const cancelled = ordersForYear.filter(
-      (o) =>
-        o.status.toLowerCase() === 'cancelled' &&
-        (o.createdAt?.seconds
-          ? new Date(o.createdAt.seconds * 1000).getMonth() === index
-          : new Date(o.createdAt).getMonth() === index)
-    ).length;
-
-    return { month, Abertas: open, Concluidas: completed, Canceladas: cancelled };
-  });
-
-  // Formatação de datas para cards
-  const formatDate = (date) => {
-    if (!date) return '-';
-    if (date._seconds || date.seconds) {
-      const secs = date._seconds ?? date.seconds;
-      return new Date(secs * 1000).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-    }
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+  const statusLabels = {
+    open: 'Abertas',
+    assigned: 'Atribuídas',
+    inProgress: 'Em Andamento',
+    completed: 'Concluídas',
+    confirmed: 'Confirmadas',
+    cancelled: 'Canceladas',
   };
 
-  async function handleCancelOrder() {
-    if (!cancelReason) return alert('Informe o motivo!');
-    try {
-      await apiService.updateStatus(cancelModal.orderId, 'CANCELLED', cancelReason);
-      setCancelModal({ open: false, orderId: null });
-      setCancelReason('');
-      loadOrders();
-    } catch (error) {
-      console.error('Erro ao cancelar ordem:', error);
-    }
-  }
+  const colors = {
+    Abertas: '#FFC107', // amarelo
+    Atribuídas: '#2196F3', // azul
+    'Em Andamento': '#03A9F4', // azul claro
+    Concluídas: '#4CAF50', // verde
+    Confirmadas: '#009688', // verde escuro
+    Canceladas: '#F44336', // vermelho
+  };
+
+  const chartData = stats
+    ? Object.entries(stats)
+        .filter(([key]) => key !== 'total')
+        .map(([key, value]) => ({
+          name: statusLabels[key] || key,
+          value: value,
+        }))
+    : [];
 
   return (
     <div className="p-4 space-y-6">
@@ -177,18 +118,22 @@ export default function UserDashboard() {
 
       {/* Gráfico */}
       <div className="bg-white rounded shadow p-4">
-        <h2 className="text-lg font-semibold mb-4">
-          Ordens do Estabelecimento por Mês ({selectedYear})
-        </h2>
+        <h2 className="text-lg font-semibold mb-4">Estatísticas de Ordens do Estabelecimento</h2>
+
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={monthlyData}>
-            <XAxis dataKey="month" />
-            <YAxis />
+          <BarChart data={chartData}>
+            <XAxis dataKey="name" />
+            <YAxis allowDecimals={false} />
             <Tooltip />
             <Legend />
-            <Bar dataKey="Abertas" fill="#FFC107" />
-            <Bar dataKey="Concluidas" fill="#4CAF50" />
-            <Bar dataKey="Canceladas" fill="#F44336" />
+            {chartData.map((entry) => (
+              <Bar
+                key={entry.name}
+                dataKey="value"
+                name={entry.name}
+                fill={colors[entry.name] || '#8884d8'}
+              />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -238,6 +183,8 @@ export default function UserDashboard() {
               onSuccess={() => {
                 setShowModal(false);
                 loadOrders();
+                loadStats();
+                loadEstablishmentOrders();
               }}
               onCancel={() => setShowModal(false)}
             />
@@ -268,4 +215,37 @@ export default function UserDashboard() {
       )}
     </div>
   );
+
+  // Função auxiliar para formatar datas
+  function formatDate(date) {
+    if (!date) return '-';
+    if (date._seconds || date.seconds) {
+      const secs = date._seconds ?? date.seconds;
+      return new Date(secs * 1000).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    }
+    return new Date(date).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+
+  // Função para cancelar ordem
+  async function handleCancelOrder() {
+    if (!cancelReason) return alert('Informe o motivo!');
+    try {
+      await apiService.updateStatus(cancelModal.orderId, 'CANCELLED', cancelReason);
+      setCancelModal({ open: false, orderId: null });
+      setCancelReason('');
+      loadOrders();
+      loadStats();
+      loadEstablishmentOrders();
+    } catch (error) {
+      console.error('Erro ao cancelar ordem:', error);
+    }
+  }
 }

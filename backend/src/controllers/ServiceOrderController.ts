@@ -319,53 +319,57 @@ if (req.user?.userType === UserType.ADMIN && establishmentId) {
       return res.status(500).json({ error: 'Erro interno do servidor' });
     }
   }
+async getServiceOrderStats(req: AuthRequest, res: Response) {
+  try {
+    const { establishmentId } = req.query;
+    const user = req.user;
 
-  async getServiceOrderStats(req: AuthRequest, res: Response) {
-    try {
-      const serviceOrdersRef = db.collection('serviceOrders');
-
-      let baseQuery: FirebaseFirestore.Query = serviceOrdersRef;
-      
-      // Filtrar por usuário se não for admin
-      if (req.user?.userType === UserType.TECHNICIAN) {
-        baseQuery = serviceOrdersRef.where('technicianId', '==', req.user.uid);
-      } else if (req.user?.userType === UserType.END_USER) {
-        baseQuery = serviceOrdersRef.where('userId', '==', req.user.uid);
-      }
-
-      const [
-        totalSnapshot,
-        openSnapshot,
-        assignedSnapshot,
-        inProgressSnapshot,
-        completedSnapshot,
-        confirmedSnapshot,
-        cancelledSnapshot
-      ] = await Promise.all([
-        baseQuery.get(),
-        baseQuery.where('status', '==', ServiceOrderStatus.OPEN).get(),
-        baseQuery.where('status', '==', ServiceOrderStatus.ASSIGNED).get(),
-        baseQuery.where('status', '==', ServiceOrderStatus.IN_PROGRESS).get(),
-        baseQuery.where('status', '==', ServiceOrderStatus.COMPLETED).get(),
-        baseQuery.where('status', '==', ServiceOrderStatus.CONFIRMED).get(),
-        baseQuery.where('status', '==', ServiceOrderStatus.CANCELLED).get()
-      ]);
-
-      const stats = {
-        total: totalSnapshot.size,
-        open: openSnapshot.size,
-        assigned: assignedSnapshot.size,
-        inProgress: inProgressSnapshot.size,
-        completed: completedSnapshot.size,
-        confirmed: confirmedSnapshot.size,
-        cancelled: cancelledSnapshot.size
-      };
-
-      res.json({ stats });
-    } catch (error: unknown) {
-      console.error('Erro ao buscar estatísticas de ordens de serviço:', error);
-      res.status(500).json({ error: 'Erro interno do servidor' });
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
     }
+
+    let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db.collection('serviceOrders');
+
+    if (establishmentId) {
+      // Sempre pega todas as ordens do estabelecimento informado
+      query = query.where('establishmentId', '==', establishmentId);
+    } else {
+      // Sem establishmentId → segue regra normal
+      if (user.userType === 'admin') {
+        // Admin vê tudo (sem filtro)
+      } else if (user.userType === 'technician') {
+        query = query.where('technicianId', '==', user.uid); // se tiver esse campo
+      } else {
+        query = query.where('userId', '==', user.uid);
+      }
+    }
+
+    const snapshot = await query.get();
+
+    const stats = {
+      total: 0,
+      open: 0,
+      assigned: 0,
+      inProgress: 0,
+      completed: 0,
+      confirmed: 0,
+      cancelled: 0,
+    };
+
+    snapshot.forEach((doc) => {
+      const order = doc.data();
+      stats.total++;
+      if (stats[order.status as keyof typeof stats] !== undefined) {
+        stats[order.status as keyof typeof stats]++;
+      }
+    });
+
+    return res.json({ stats });
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas:', error);
+    return res.status(500).json({ error: 'Erro ao buscar estatísticas de ordens de serviço' });
   }
+}
+
 }
 
