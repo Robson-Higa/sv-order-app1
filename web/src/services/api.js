@@ -9,6 +9,9 @@ const api = axios.create({
   baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
+    Pragma: 'no-cache',
+    Expires: '0',
   },
 });
 
@@ -71,6 +74,9 @@ export const apiService = {
   // Ordens de Serviço
   getServiceOrders: (filters = {}) => api.get('/service-orders', { params: filters }),
   getServiceOrder: (id) => api.get(`/service-orders/${id}`),
+  // Substitua a função antiga:
+  getServiceOrderStats: (params = {}) => api.get('/service-orders/stats', { params }),
+
   createServiceOrder: (data) => api.post('/service-orders', data),
   updateServiceOrder: (id, data) => api.patch(`/service-orders/${id}`, data),
   deleteServiceOrder: (id) => api.delete(`/service-orders/${id}`),

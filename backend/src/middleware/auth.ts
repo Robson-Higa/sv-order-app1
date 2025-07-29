@@ -28,20 +28,38 @@ export const authenticateToken = async (
       userType: UserType;
     };
 
-    // Preenche req.user com os dados básicos do token
-    req.user = {
-      uid: decoded.uid,
-      email: decoded.email,
-      userType: decoded.userType,
-    } as User;
-console.log('[authenticateToken] Usuário autenticado:', req.user);
+    // Busca dados completos do usuário no Firestore
+    const userDoc = await db.collection('users').doc(decoded.uid).get();
+
+    if (!userDoc.exists) {
+      res.status(401).json({ error: 'Usuário não encontrado' });
+      return;
+    }
+
+    const userData = userDoc.data() as User;
+
+    // Preenche req.user com dados completos
+   req.user = {
+  uid: decoded.uid,
+  email: decoded.email,
+  userType: decoded.userType,
+  establishmentId: userData.establishmentId,
+  name: userData.name,
+  phone: userData.phone,
+  createdAt: userData.createdAt,
+  updatedAt: userData.updatedAt,
+  isActive: userData.isActive,
+  // outros campos que o User exigir
+};
+
+
+    console.log('[authenticateToken] Usuário autenticado:', req.user);
+
     next();
   } catch (err) {
     res.status(401).json({ error: 'Token inválido' });
   }
 };
-
-
 
 export const requireRole = (roles: UserType[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {

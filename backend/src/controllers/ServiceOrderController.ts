@@ -5,36 +5,64 @@ import { generateId, generateOrderNumber } from '../utils/helpers';
 import { Query } from 'firebase-admin/firestore';
 
 export class ServiceOrderController {
-  async getAllServiceOrders(req: AuthRequest, res: Response) {
+ async getAllServiceOrders(req: AuthRequest, res: Response) {
   try {
-   const { status, priority, technicianId, establishmentId, scope } = req.query;
-let query: FirebaseFirestore.Query = db.collection('serviceOrders');
+    const { status, priority, technicianId, establishmentId, scope } = req.query;
+    const user = req.user;
 
-if (status) query = query.where('status', '==', status);
-if (priority) query = query.where('priority', '==', priority);
-if (technicianId) query = query.where('technicianId', '==', technicianId);
+    console.log('📌 [ServiceOrders] Requisição recebida');
+    console.log('➡ Filtros recebidos:', { status, priority, technicianId, establishmentId, scope });
+    console.log('➡ Usuário autenticado:', {
+      uid: user?.uid,
+      userType: user?.userType,
+      establishmentId: user?.establishmentId,
+      name: user?.name
+    });
 
-// Ajuste aqui: só filtra establishmentId do req.query se for ADMIN, ou ignora para END_USER
-if (req.user?.userType === UserType.ADMIN && establishmentId) {
+    let query: FirebaseFirestore.Query = db.collection('serviceOrders');
+
+    if (status) {
+      console.log(`📌 Aplicando filtro status: ${status}`);
+      query = query.where('status', '==', status);
+    }
+
+    if (priority) {
+      console.log(`📌 Aplicando filtro priority: ${priority}`);
+      query = query.where('priority', '==', priority);
+    }
+
+    if (technicianId) {
+      console.log(`📌 Aplicando filtro technicianId: ${technicianId}`);
+      query = query.where('technicianId', '==', technicianId);
+    }
+
+   if (req.user?.userType === UserType.ADMIN && establishmentId) {
+  // Admin pode ver qualquer estabelecimento
   query = query.where('establishmentId', '==', establishmentId);
 } else if (req.user?.userType === UserType.END_USER) {
-  // usuário final só vê as ordens dele
-  query = query.where('userId', '==', req.user.uid);
-} else if (req.user?.establishmentId) {
-  // técnicos e outros usuários veem ordens do seu estabelecimento
+  // Usuário final vê todas do seu estabelecimento
+  query = query.where('establishmentId', '==', req.user.establishmentId);
+} else if (req.user?.userType === UserType.TECHNICIAN) {
+  // Técnico também vê todas do seu estabelecimento
   query = query.where('establishmentId', '==', req.user.establishmentId);
 }
 
+
+    console.log('📌 Executando query no Firestore...');
+
     const ordersSnap = await query.get();
+    console.log(`📌 Total de ordens encontradas: ${ordersSnap.size}`);
 
     const orders = ordersSnap.docs.map((doc) => ({
       id: doc.id,
       ...doc.data()
     }));
 
+    console.log('📌 Dados das ordens enviadas para o frontend:', JSON.stringify(orders, null, 2));
+
     return res.status(200).json({ serviceOrders: orders });
   } catch (error) {
-    console.error('Erro ao buscar ordens:', error);
+    console.error('❌ Erro ao buscar ordens:', error);
     return res.status(500).json({ error: 'Erro ao buscar ordens' });
   }
 }
@@ -321,30 +349,39 @@ if (req.user?.userType === UserType.ADMIN && establishmentId) {
   }
 async getServiceOrderStats(req: AuthRequest, res: Response) {
   try {
+    console.log('--- getServiceOrderStats called ---');
+    console.log('User:', req.user);
+    console.log('Query params:', req.query);
+
     const { establishmentId } = req.query;
     const user = req.user;
 
     if (!user) {
+      console.log('Usuário não autenticado');
       return res.status(401).json({ error: 'Usuário não autenticado' });
     }
 
     let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db.collection('serviceOrders');
 
     if (establishmentId) {
-      // Sempre pega todas as ordens do estabelecimento informado
+      console.log(`Filtrando ordens pelo establishmentId: ${establishmentId}`);
       query = query.where('establishmentId', '==', establishmentId);
     } else {
-      // Sem establishmentId → segue regra normal
+      console.log(`Sem establishmentId. Aplicando filtro padrão para userType: ${user.userType}`);
       if (user.userType === 'admin') {
         // Admin vê tudo (sem filtro)
+        console.log('Usuário admin - sem filtro de ordens');
       } else if (user.userType === 'technician') {
-        query = query.where('technicianId', '==', user.uid); // se tiver esse campo
+        console.log(`Usuário técnico - filtrando ordens do technicianId: ${user.uid}`);
+        query = query.where('technicianId', '==', user.uid);
       } else {
+        console.log(`Usuário final - filtrando ordens do userId: ${user.uid}`);
         query = query.where('userId', '==', user.uid);
       }
     }
 
     const snapshot = await query.get();
+    console.log(`Total de ordens encontradas: ${snapshot.size}`);
 
     const stats = {
       total: 0,
@@ -358,11 +395,14 @@ async getServiceOrderStats(req: AuthRequest, res: Response) {
 
     snapshot.forEach((doc) => {
       const order = doc.data();
+      console.log(`Ordem: ${doc.id} - Status: ${order.status}`);
       stats.total++;
       if (stats[order.status as keyof typeof stats] !== undefined) {
         stats[order.status as keyof typeof stats]++;
       }
     });
+
+    console.log('Estatísticas finais:', stats);
 
     return res.json({ stats });
   } catch (error) {

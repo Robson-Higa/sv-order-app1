@@ -94,6 +94,11 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Rota não encontrada' });
 });
 
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
 // Iniciar servidor
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
