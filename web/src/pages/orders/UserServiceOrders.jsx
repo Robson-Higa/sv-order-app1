@@ -22,7 +22,10 @@ const UserServiceOrders = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getServiceOrders({ limit: 10 }); // últimas ordens
+      const response = await apiService.getServiceOrders({
+        scope: 'mine', // 🔹 Apenas ordens criadas pelo usuário
+        limit: 10,
+      });
       if (response?.serviceOrders) {
         setOrders(response.serviceOrders);
       }
