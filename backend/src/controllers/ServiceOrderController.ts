@@ -5,7 +5,7 @@ import { generateId, generateOrderNumber } from '../utils/helpers';
 import { Query } from 'firebase-admin/firestore';
 
 export class ServiceOrderController {
- async getAllServiceOrders(req: AuthRequest, res: Response) {
+async getAllServiceOrders(req: AuthRequest, res: Response) {
   try {
     const { status, priority, technicianId, establishmentId, scope } = req.query;
     const user = req.user;
@@ -36,21 +36,21 @@ export class ServiceOrderController {
       query = query.where('technicianId', '==', technicianId);
     }
 
-   if (req.user?.userType === UserType.ADMIN && establishmentId) {
-  // Admin pode ver qualquer estabelecimento
-  query = query.where('establishmentId', '==', establishmentId);
-} else if (req.user?.userType === UserType.END_USER) {
-  // Usuário final vê todas do seu estabelecimento
-  query = query.where('establishmentId', '==', req.user.establishmentId);
-} else if (req.user?.userType === UserType.TECHNICIAN) {
-  // Técnico também vê todas do seu estabelecimento
-  query = query.where('establishmentId', '==', req.user.establishmentId);
-}
+    if (user?.userType === UserType.ADMIN && establishmentId) {
+      query = query.where('establishmentId', '==', establishmentId);
+    } else if (user?.userType === UserType.END_USER) {
+      query = query.where('establishmentId', '==', user.establishmentId);
+      query = query.where('userId', '==', user.uid); // filtra só ordens do usuário
+    } else if (user?.userType === UserType.TECHNICIAN) {
+      query = query.where('establishmentId', '==', user.establishmentId);
+    }
 
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+    query = query.limit(limit);
 
     console.log('📌 Executando query no Firestore...');
-
     const ordersSnap = await query.get();
+
     console.log(`📌 Total de ordens encontradas: ${ordersSnap.size}`);
 
     const orders = ordersSnap.docs.map((doc) => ({
@@ -66,6 +66,7 @@ export class ServiceOrderController {
     return res.status(500).json({ error: 'Erro ao buscar ordens' });
   }
 }
+
 
   async getServiceOrderById(req: AuthRequest, res: Response) {
     try {
