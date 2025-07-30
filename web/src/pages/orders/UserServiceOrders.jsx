@@ -5,10 +5,47 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Clock, Building, User } from 'lucide-react';
-import { getStatusText, getStatusColor, getPriorityText, getPriorityColor } from '../../types';
+import { getStatusText, getPriorityText } from '../../types';
+
+const gradientStatusColors = {
+  open: 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white',
+  in_progress: 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white',
+  completed: 'bg-gradient-to-r from-green-500 to-emerald-600 text-white',
+  cancelled: 'bg-gradient-to-r from-red-500 to-pink-600 text-white',
+};
+
+const gradientPriorityColors = {
+  HIGH: 'bg-gradient-to-r from-red-400 to-red-600 text-white',
+  MEDIUM: 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white',
+  LOW: 'bg-gradient-to-r from-green-400 to-teal-500 text-white',
+};
+
+// ✅ Corrige Firestore Timestamp
+const formatDate = (dateValue) => {
+  if (!dateValue) return 'Data indisponível';
+  let date;
+
+  if (dateValue._seconds) {
+    date = new Date(dateValue._seconds * 1000);
+  } else if (typeof dateValue.toDate === 'function') {
+    date = dateValue.toDate();
+  } else {
+    date = new Date(dateValue);
+  }
+
+  if (isNaN(date.getTime())) return 'Data inválida';
+
+  return date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
 
 const UserServiceOrders = () => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -22,12 +59,18 @@ const UserServiceOrders = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getServiceOrders({
-        scope: 'mine', // 🔹 Apenas ordens criadas pelo usuário
-        limit: 10,
-      });
+      const response = await apiService.getServiceOrders({ scope: 'mine', limit: 10 });
       if (response?.serviceOrders) {
-        setOrders(response.serviceOrders);
+        const sortedOrders = [...response.serviceOrders].sort((a, b) => {
+          const dateA = a.createdAt._seconds
+            ? a.createdAt._seconds
+            : new Date(a.createdAt).getTime() / 1000;
+          const dateB = b.createdAt._seconds
+            ? b.createdAt._seconds
+            : new Date(b.createdAt).getTime() / 1000;
+          return dateB - dateA; // Mais recentes primeiro
+        });
+        setOrders(sortedOrders);
       }
     } catch (error) {
       console.error('Erro ao carregar ordens:', error);
@@ -40,7 +83,7 @@ const UserServiceOrders = () => {
   const handleCancelOrder = async () => {
     if (!cancelReason.trim()) return alert('Informe um motivo para cancelamento.');
     try {
-      await apiService.cancelServiceOrder(selectedOrderId, { reason: cancelReason });
+      await apiService.cancelServiceOrder(selectedOrderId, cancelReason);
       setCancelModalOpen(false);
       setCancelReason('');
       loadOrders();
@@ -49,103 +92,67 @@ const UserServiceOrders = () => {
     }
   };
 
-  const handleUpdateStatus = async (id, status) => {
-    try {
-      await apiService.updateServiceOrderStatus(id, { status });
-      loadOrders();
-    } catch (error) {
-      console.error(`Erro ao atualizar status para ${status}:`, error);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   if (loading) {
-    return <p>Carregando ordens...</p>;
+    return <p className="text-center text-gray-500">Carregando ordens...</p>;
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Minhas Ordens de Serviço</h1>
+    <div className="space-y-6 max-w-4xl mx-auto px-4">
+      <h1 className="text-3xl font-extrabold mb-6 text-gray-900">Minhas Ordens de Serviço</h1>
 
       {orders.length === 0 ? (
-        <p>Nenhuma ordem recente.</p>
+        <p className="text-center text-gray-600">Nenhuma ordem recente.</p>
       ) : (
         orders.map((order) => (
-          <Card key={order.id} className="hover:shadow-md transition-shadow">
+          <Card
+            key={order.id}
+            className="hover:shadow-lg transition-shadow rounded-lg border border-gray-200"
+          >
             <CardContent className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold">{order.title}</h3>
-                    <Badge className={getStatusColor(order.status)}>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <h3 className="text-xl font-semibold text-gray-800">{order.title}</h3>
+                    <Badge
+                      className={`${gradientStatusColors[order.status] || 'bg-gray-300'} shadow-md`}
+                    >
                       {getStatusText(order.status)}
                     </Badge>
-                    <Badge variant="outline" className={getPriorityColor(order.priority)}>
+                    <Badge
+                      className={`${gradientPriorityColors[order.priority] || 'bg-gray-200'} shadow-inner`}
+                    >
                       {getPriorityText(order.priority)}
                     </Badge>
                   </div>
-                  <p className="text-gray-600 mb-3">{order.description}</p>
+                  <p className="text-gray-700 mb-4">{order.description}</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" /> Criada: {formatDate(order.createdAt)}
+                      <Clock className="w-5 h-5 text-gray-400" /> Criada:{' '}
+                      {formatDate(order.createdAt)}
                     </div>
-                    {order.establishment && (
+                    <div className="flex items-center gap-2">
+                      <Building className="w-5 h-5 text-gray-400" /> {order.establishmentName}
+                    </div>
+                    {order.technicianName && (
                       <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4" /> {order.establishment.name}
-                      </div>
-                    )}
-                    {order.technician && (
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4" /> Técnico: {order.technician.name}
+                        <User className="w-5 h-5 text-gray-400" /> Técnico: {order.technicianName}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Ações */}
-                <div className="flex flex-col gap-2 ml-4">
-                  {order.status === 'open' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600"
-                      onClick={() => {
-                        setSelectedOrderId(order.id);
-                        setCancelModalOpen(true);
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                  )}
-                  {order.status === 'in_progress' && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUpdateStatus(order.id, 'paused')}
-                      >
-                        Pausar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-green-600"
-                        onClick={() => handleUpdateStatus(order.id, 'completed')}
-                      >
-                        Confirmar Conclusão
-                      </Button>
-                    </>
-                  )}
-                </div>
+                {/* Botão Cancelar */}
+                {order.status === 'open' && (
+                  <Button
+                    className="bg-gradient-to-r from-red-500 to-pink-600 text-white hover:from-red-600 hover:to-pink-700 shadow-md"
+                    onClick={() => {
+                      setSelectedOrderId(order.id);
+                      setCancelModalOpen(true);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -154,20 +161,24 @@ const UserServiceOrders = () => {
 
       {/* Modal Cancelamento */}
       {cancelModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 className="text-lg font-bold mb-4">Cancelar Ordem</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <h2 className="text-xl font-semibold mb-4 text-gray-900">Cancelar Ordem</h2>
             <textarea
-              className="border rounded w-full p-2 mb-4"
+              className="border border-gray-300 rounded-md w-full p-3 mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-pink-400"
+              rows={4}
               placeholder="Informe o motivo do cancelamento"
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <Button variant="outline" onClick={() => setCancelModalOpen(false)}>
                 Fechar
               </Button>
-              <Button onClick={handleCancelOrder} className="bg-red-600 text-white">
+              <Button
+                className="bg-gradient-to-r from-red-500 to-pink-600 text-white hover:from-red-600 hover:to-pink-700 shadow-md"
+                onClick={handleCancelOrder}
+              >
                 Cancelar Ordem
               </Button>
             </div>

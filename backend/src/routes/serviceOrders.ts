@@ -12,6 +12,7 @@ router.use(authenticateToken);
 // Rotas gerais
 router.get('/', serviceOrderController.getAllServiceOrders);
 router.get('/stats', serviceOrderController.getServiceOrderStats);
+router.get('/monthly-stats', serviceOrderController.getMonthlyServiceOrderStats);
 router.get('/:id', serviceOrderController.getServiceOrderById);
 
 // Criação de ordem de serviço

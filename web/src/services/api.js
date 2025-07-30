@@ -76,6 +76,8 @@ export const apiService = {
   getServiceOrder: (id) => api.get(`/service-orders/${id}`),
   // Substitua a função antiga:
   getServiceOrderStats: (params = {}) => api.get('/service-orders/stats', { params }),
+  getMonthlyServiceOrderStats: (params = {}) =>
+    api.get('/service-orders/monthly-stats', { params }),
 
   createServiceOrder: (data) => api.post('/service-orders', data),
   updateServiceOrder: (id, data) => api.patch(`/service-orders/${id}`, data),
