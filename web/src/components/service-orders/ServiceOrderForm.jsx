@@ -42,14 +42,20 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
         try {
           const headers = { Authorization: `Bearer ${token}` };
           const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
           const res = await fetch(`${baseURL}/api/establishments/${user.establishmentId}`, {
-            headers,
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
           });
+
           if (!res.ok) throw new Error('Erro ao buscar estabelecimento');
 
           const data = await res.json();
           setEstablishmentName(data.name || '');
+
+          // Agora busca os setores desse estabelecimento
+          fetchSectorsByEstablishment(user.establishmentId);
         } catch (err) {
           console.error('Erro ao buscar nome do estabelecimento:', err);
         }
@@ -154,6 +160,25 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
     }
   };
 
+  const fetchSectorsByEstablishment = async (establishmentId) => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+      const res = await fetch(`${baseURL}/api/establishments/${establishmentId}/sectors`, {
+        headers,
+      });
+
+      if (!res.ok) throw new Error('Erro ao buscar setores');
+
+      const data = await res.json();
+      setSectors(data.sectors || []);
+    } catch (err) {
+      console.error('Erro ao buscar setores:', err);
+      setSectors([]);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Título com Autocomplete */}
@@ -237,8 +262,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
               size="small"
             />
           )}
-          disabled={loading}
-          freeSolo // permite digitar livremente, se desejar
+          disabled={loading || sectors.length === 0}
         />
       </div>
 
@@ -255,7 +279,17 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
           <select
             className={`border rounded w-full p-2 ${error.establishmentName ? 'border-red-500' : ''}`}
             value={establishmentName}
-            onChange={(e) => setEstablishmentName(e.target.value)}
+            onChange={(e) => {
+              const selectedName = e.target.value;
+              setEstablishmentName(selectedName);
+              setSector(''); // resetar setor
+              const selectedEst = establishments.find((est) => est.name === selectedName);
+              if (selectedEst) {
+                fetchSectorsByEstablishment(selectedEst.id);
+              } else {
+                setSectors([]);
+              }
+            }}
             disabled={loading || loadingSelects}
           >
             <option value="">Selecione...</option>

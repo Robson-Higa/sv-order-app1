@@ -12,7 +12,9 @@ import serviceOrderRoutes from './routes/serviceOrders';
 import dashboardRoutes from './routes/dashboard';
 import tokenRoutes from './routes/auth'
 import reportRoutes from './routes/report'
-import titleSectorRoutes from './routes/titles';
+import titleRoutes from './routes/titles';
+import sectorRoutes from './routes/sectors';
+
 
 
 dotenv.config();
@@ -39,15 +41,16 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Rotas da API
-app.use('/api/auth', tokenRoutes);
+//app.use('/api/auth', tokenRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/establishments', establishmentRoutes);
 app.use('/api/service-orders', serviceOrderRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api', titleSectorRoutes);
-app.use("/api/titles", titleSectorRoutes);
+app.use("/api/titles", titleRoutes);
+app.use('/api', sectorRoutes); 
+
 // Rota de health check
 app.get('/health', (req, res) => {
   res.status(200).json({
