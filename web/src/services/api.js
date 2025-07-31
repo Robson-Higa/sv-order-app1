@@ -1,7 +1,6 @@
+import axios from 'axios';
 import { getDocs, collection, query, where } from 'firebase/firestore';
 import { db } from '../services/firebase';
-
-import axios from 'axios';
 
 const API_BASE = 'http://localhost:3000/api';
 
@@ -15,10 +14,10 @@ const api = axios.create({
   },
 });
 
-// Adiciona token automaticamente
+// ✅ Intercepta e adiciona token automaticamente
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token'); // Verifique a chave usada
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,7 +26,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Retorna só response.data e trata 401
+// ✅ Retorna só response.data e trata erro 401
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
@@ -41,29 +40,24 @@ api.interceptors.response.use(
   }
 );
 
-export function getServiceOrders(filters = {}) {
-  return api.get('/service-orders', { params: filters });
-}
-
 export const apiService = {
-  // Autenticação
+  /** ===================== AUTENTICAÇÃO ===================== **/
   login: (data) => axios.post(`${API_BASE}/auth/login`, data),
   register: (data) => axios.post(`${API_BASE}/auth/register`, data),
   logout: () => api.post('/auth/logout'),
   changePassword: (currentPassword, newPassword) =>
     api.patch('/auth/change-password', { currentPassword, newPassword }),
 
-  // Usuários
+  /** ===================== USUÁRIOS ===================== **/
   getUsers: () => api.get('/users'),
-  getAllUsers: () => api.get('/users'),
-  getTechnicians: () => api.get('/users/technicians'), // ✅ endpoint padronizado
+  getTechnicians: () => api.get('/users/technicians'),
   getEndUsers: () => api.get('/users/type/END_USER'),
   createUser: (data) => api.post('/users', data),
   updateUser: (id, data) => api.patch(`/users/${id}`, data),
   deleteUser: (id) => api.delete(`/users/${id}`),
   activateUser: (id) => api.patch(`/users/${id}/activate`),
 
-  // Estabelecimentos
+  /** ===================== ESTABELECIMENTOS ===================== **/
   getEstablishments: () => api.get('/establishments'),
   createEstablishment: (data) => api.post('/establishments', data),
   updateEstablishment: (id, data) => api.put(`/establishments/${id}`, data),
@@ -71,67 +65,50 @@ export const apiService = {
   deactivateEstablishment: (id) => api.patch(`/establishments/${id}/deactivate`),
   activateEstablishment: (id) => api.patch(`/establishments/${id}/activate`),
 
-  // Ordens de Serviço
+  // Setores
+  getSectors: (establishmentId) => api.get(`/establishments/${establishmentId}/sectors`),
+  updateSector: (establishmentId, sectorId, data) =>
+    api.patch(`/establishments/${establishmentId}/sectors/${sectorId}`, data),
+
+  updateSector: (establishmentId, sectorId, data) =>
+    api.put(`/establishments/${establishmentId}/sectors/${sectorId}`, data),
+  deleteSector: (establishmentId, sectorId) =>
+    api.delete(`/establishments/${establishmentId}/sectors/${sectorId}`),
+
+  /** ===================== ORDENS DE SERVIÇO ===================== **/
   getServiceOrders: (filters = {}) => api.get('/service-orders', { params: filters }),
   getServiceOrder: (id) => api.get(`/service-orders/${id}`),
-  // Substitua a função antiga:
-  getServiceOrderStats: (params = {}) => api.get('/service-orders/stats', { params }),
-  getMonthlyServiceOrderStats: (params = {}) =>
-    api.get('/service-orders/monthly-stats', { params }),
-
   createServiceOrder: (data) => api.post('/service-orders', data),
   updateServiceOrder: (id, data) => api.patch(`/service-orders/${id}`, data),
   deleteServiceOrder: (id) => api.delete(`/service-orders/${id}`),
-
-  // Atribuir técnico
   assignTechnician: (id, technicianId) =>
     api.patch(`/service-orders/${id}/assign`, { technicianId }),
-
-  // ✅ Atualizar status (pausar, concluir, etc.)
   updateStatus: (id, status, notes) => api.patch(`/service-orders/${id}/status`, { status, notes }),
-
-  // ✅ Cancelar ordem (com motivo)
   cancelServiceOrder: (id, reason) => api.patch(`/service-orders/${id}/cancel`, { reason }),
-
-  // ✅ Confirmar conclusão
   confirmCompletion: (id) => api.patch(`/service-orders/${id}/confirm`),
-
-  // Feedback
   addFeedback: (id, feedback, rating) =>
     api.patch(`/service-orders/${id}/feedback`, { feedback, rating }),
 
-  // Dashboard
+  /** ===================== DASHBOARD / RELATÓRIOS ===================== **/
   getDashboardStats: () => api.get('/dashboard/stats'),
   getRecentOrders: () => api.get('/dashboard/recent-orders'),
   getActiveOrders: () => api.get('/dashboard/active-orders'),
 
   // Relatórios
-  getReports: (filters = {}) => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params.append(key, value);
-      }
-    });
-    return api.get(`/reports?${params.toString()}`);
-  },
+  getReports: (filters = {}) => api.get('/reports', { params: filters }),
   getCompletedOrdersByDate: (params) => api.get('/reports/completed-by-date', { params }),
   getStatusPercentage: (params) => api.get('/reports/status-percentage', { params }),
   getOrdersByEstablishment: (params) => api.get('/reports/by-establishment', { params }),
   getOrdersByTechnician: (params) => api.get('/reports/by-technician', { params }),
 };
-export async function getEndUsers() {
-  const response = await api.get('/users/type/END_USER');
-  return response.users;
-}
 
+/** ===================== FIRESTORE AUXILIAR ===================== **/
 export async function fetchTechnicians() {
-  const q = query(collection(db, 'users'), where('userType', '==', 'technician'));
+  const q = query(collection(db, 'users'), where('userType', '==', 'TECHNICIAN'));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
 }
 
-// Buscar estabelecimentos
 export async function fetchEstablishments() {
   const snapshot = await getDocs(collection(db, 'establishments'));
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));

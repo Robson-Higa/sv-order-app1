@@ -27,12 +27,16 @@ import '../App.css';
 
 const EstablishmentsPage = () => {
   const [establishments, setEstablishments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEstablishment, setEditingEstablishment] = useState(null);
   const [formData, setFormData] = useState({ name: '' });
   const [searchTerm, setSearchTerm] = useState('');
+
+  // ✅ Setores
+  const [sectors, setSectors] = useState([]);
+  const [sectorInput, setSectorInput] = useState('');
 
   useEffect(() => {
     loadEstablishments();
@@ -46,10 +50,19 @@ const EstablishmentsPage = () => {
         setEstablishments(response.establishments);
       }
     } catch (err) {
-      console.error('Error loading establishments:', err);
-      setError(err.message || 'Erro ao carregar estabelecimentos.');
+      console.error('Erro ao carregar estabelecimentos:', err);
+      setError('Erro ao carregar estabelecimentos.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSectors = async (establishmentId) => {
+    try {
+      const response = await apiService.getSectors(establishmentId);
+      setSectors(response?.sectors || []);
+    } catch (err) {
+      console.error('Erro ao carregar setores:', err);
     }
   };
 
@@ -85,17 +98,19 @@ const EstablishmentsPage = () => {
       setIsDialogOpen(false);
       setEditingEstablishment(null);
       setFormData({ name: '' });
+      setSectors([]);
     } catch (err) {
-      console.error('Error saving establishment:', err);
-      setError(err.message || 'Erro ao salvar estabelecimento.');
+      console.error('Erro ao salvar estabelecimento:', err);
+      setError('Erro ao salvar estabelecimento.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEdit = (est) => {
+  const handleEdit = async (est) => {
     setEditingEstablishment(est);
     setFormData({ name: est.name });
+    await loadSectors(est.id);
     setIsDialogOpen(true);
   };
 
@@ -107,12 +122,13 @@ const EstablishmentsPage = () => {
         await loadEstablishments();
       } catch (err) {
         console.error('Erro ao deletar estabelecimento:', err);
-        setError(err.message || 'Erro ao deletar estabelecimento.');
+        setError('Erro ao deletar estabelecimento.');
       } finally {
         setLoading(false);
       }
     }
   };
+
   const handleDeactivate = async (id) => {
     if (window.confirm('Deseja desativar este estabelecimento?')) {
       setLoading(true);
@@ -121,7 +137,6 @@ const EstablishmentsPage = () => {
         await loadEstablishments();
       } catch (err) {
         console.error('Erro ao desativar estabelecimento:', err);
-        setError(err.message || 'Erro ao desativar estabelecimento.');
       } finally {
         setLoading(false);
       }
@@ -136,25 +151,55 @@ const EstablishmentsPage = () => {
         await loadEstablishments();
       } catch (err) {
         console.error('Erro ao ativar estabelecimento:', err);
-        setError(err.message || 'Erro ao ativar estabelecimento.');
       } finally {
         setLoading(false);
       }
     }
   };
 
+  // ✅ Setores
+  const handleAddSector = async () => {
+    if (!sectorInput.trim()) return;
+    try {
+      await apiService.createSector(editingEstablishment.id, { name: sectorInput.trim() });
+      await loadSectors(editingEstablishment.id);
+      setSectorInput('');
+    } catch (err) {
+      console.error('Erro ao adicionar setor:', err);
+    }
+  };
+
+  const handleDeleteSector = async (sectorId) => {
+    if (window.confirm('Deseja excluir este setor?')) {
+      try {
+        await apiService.deleteSector(editingEstablishment.id, sectorId);
+        await loadSectors(editingEstablishment.id);
+      } catch (err) {
+        console.error('Erro ao deletar setor:', err);
+      }
+    }
+  };
+
+  const handleUpdateSector = async (sectorId, newName) => {
+    try {
+      await apiService.updateSector(editingEstablishment.id, sectorId, { name: newName });
+      await loadSectors(editingEstablishment.id);
+    } catch (err) {
+      console.error('Erro ao atualizar setor:', err);
+    }
+  };
+
   const filteredEstablishments = establishments.filter((est) =>
     est.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  console.log('Estabelecimentos filtrados:', filteredEstablishments);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gerenciar Estabelecimentos</h1>
+          <h1 className="text-2xl font-bold">Gerenciar Estabelecimentos</h1>
           <p className="text-gray-600 mt-1">
-            Adicione, edite ou remova estabelecimentos do sistema.
+            Adicione, edite ou remova estabelecimentos e seus setores.
           </p>
         </div>
 
@@ -164,6 +209,7 @@ const EstablishmentsPage = () => {
               onClick={() => {
                 setEditingEstablishment(null);
                 setFormData({ name: '' });
+                setSectors([]);
                 setError('');
               }}
             >
@@ -172,18 +218,17 @@ const EstablishmentsPage = () => {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>
                 {editingEstablishment ? 'Editar Estabelecimento' : 'Novo Estabelecimento'}
               </DialogTitle>
               <DialogDescription>
-                {editingEstablishment
-                  ? 'Edite o nome do estabelecimento.'
-                  : 'Informe o nome do novo estabelecimento.'}
+                Gerencie as informações e setores deste estabelecimento.
               </DialogDescription>
             </DialogHeader>
 
+            {/* Formulário */}
             <form onSubmit={handleSubmit} className="grid gap-4 py-4">
               {error && (
                 <Alert variant="destructive">
@@ -202,9 +247,48 @@ const EstablishmentsPage = () => {
                   required
                 />
               </div>
+
+              {/* Seções de setores */}
+              {editingEstablishment && (
+                <div className="mt-4">
+                  <h4 className="font-semibold mb-2">Setores</h4>
+                  <ul className="space-y-2">
+                    {sectors.map((sector) => (
+                      <li key={sector.id} className="flex justify-between items-center">
+                        <Input
+                          defaultValue={sector.name}
+                          onBlur={(e) => handleUpdateSector(sector.id, e.target.value)}
+                          className="w-2/3"
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600"
+                          onClick={() => handleDeleteSector(sector.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Adicionar novo setor */}
+                  <div className="flex gap-2 mt-3">
+                    <Input
+                      placeholder="Novo setor"
+                      value={sectorInput}
+                      onChange={(e) => setSectorInput(e.target.value)}
+                    />
+                    <Button type="button" onClick={handleAddSector}>
+                      Adicionar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <DialogFooter>
                 <Button type="submit" disabled={loading}>
-                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {editingEstablishment ? 'Salvar Alterações' : 'Adicionar'}
                 </Button>
               </DialogFooter>
@@ -213,6 +297,7 @@ const EstablishmentsPage = () => {
         </Dialog>
       </div>
 
+      {/* Busca */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -225,20 +310,18 @@ const EstablishmentsPage = () => {
             placeholder="Buscar por nome..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
           />
         </CardContent>
       </Card>
 
+      {/* Lista */}
       <Card>
         <CardHeader>
           <CardTitle>Lista de Estabelecimentos</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredEstablishments.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Nenhum estabelecimento encontrado.</p>
-            </div>
+            <div className="text-center py-8 text-gray-500">Nenhum estabelecimento encontrado.</div>
           ) : (
             <Table>
               <TableHeader>
@@ -251,7 +334,7 @@ const EstablishmentsPage = () => {
               <TableBody>
                 {filteredEstablishments.map((est) => (
                   <TableRow key={est.id}>
-                    <TableCell className="font-medium">{est.name}</TableCell>
+                    <TableCell>{est.name}</TableCell>
                     <TableCell>
                       <span
                         className={`inline-block px-2 py-1 text-xs rounded-full ${
@@ -261,11 +344,18 @@ const EstablishmentsPage = () => {
                         {est.isActive ? 'Ativo' : 'Inativo'}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(est)}>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => handleEdit(est)}
+                        >
                           <Edit className="w-4 h-4" />
+                          Editar
                         </Button>
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -278,7 +368,6 @@ const EstablishmentsPage = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-yellow-600"
                             onClick={() => handleDeactivate(est.id)}
                           >
                             Desativar
@@ -287,7 +376,6 @@ const EstablishmentsPage = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-green-600"
                             onClick={() => handleActivate(est.id)}
                           >
                             Ativar
