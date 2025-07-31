@@ -1,97 +1,167 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
+import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import { Clock, Building, User } from 'lucide-react';
+import { getStatusText, getStatusColor, getPriorityText, getPriorityColor } from '../../types';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
-export default function TechnicianDashboard() {
-  const { user } = useAuth();
+const TechnicianDashboard = () => {
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [completeModal, setCompleteModal] = useState({ open: false, orderId: null });
-  const [serviceDescription, setServiceDescription] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
-    if (user?.uid) loadOrders();
-  }, [user]);
+    loadOrders();
+  }, []);
 
-  async function loadOrders() {
-    setLoading(true);
+  const loadOrders = async () => {
     try {
-      const response = await apiService.getServiceOrders({ technicianName: user.name });
-      setOrders(response.data || []);
+      setLoading(true);
+      const response = await apiService.getServiceOrders({ scope: 'mine', limit: 20 });
+      if (response?.serviceOrders) {
+        setOrders(
+          response.serviceOrders.filter((order) =>
+            ['assigned', 'in_progress'].includes(order.status)
+          )
+        );
+      }
     } catch (error) {
-      console.error('Erro ao buscar ordens do técnico:', error);
+      console.error('Erro ao carregar ordens:', error);
+      setOrders([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }
+  };
 
-  const assignedOrders = orders.filter((o) => ['IN_PROGRESS', 'OPEN'].includes(o.status));
-
-  async function handleCompleteOrder() {
-    if (!serviceDescription) return alert('Informe a descrição!');
+  const handleStatusUpdate = async (id, status) => {
     try {
-      await apiService.updateStatus(completeModal.orderId, 'COMPLETED', serviceDescription);
-      setCompleteModal({ open: false, orderId: null });
-      setServiceDescription('');
+      await apiService.updateServiceOrder(id, { status, technicianNotes: notes });
+      setSelectedOrder(null);
+      setNotes('');
       loadOrders();
     } catch (error) {
-      console.error('Erro ao finalizar ordem:', error);
+      console.error('Erro ao atualizar status:', error);
     }
-  }
+  };
+
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    doc.text('Relatório de Ordens Concluídas', 14, 16);
+    const tableColumn = ['OS', 'Título', 'Estabelecimento', 'Data Conclusão'];
+    const tableRows = [];
+
+    orders
+      .filter((order) => order.status === 'completed')
+      .forEach((order) => {
+        const row = [
+          order.orderNumber,
+          order.title,
+          order.establishmentName,
+          new Date(order.updatedAt?.seconds * 1000).toLocaleDateString('pt-BR'),
+        ];
+        tableRows.push(row);
+      });
+
+    doc.autoTable(tableColumn, tableRows, { startY: 20 });
+    doc.save('relatorio-tecnico.pdf');
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'Data inválida';
+    const d = date?.seconds ? new Date(date.seconds * 1000) : new Date(date);
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  if (loading) return <p>Carregando ordens...</p>;
 
   return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Minhas Ordens</h1>
+    <div className="space-y-6 max-w-5xl mx-auto px-4">
+      <h1 className="text-3xl font-extrabold mb-6 text-gray-900">Minhas Ordens Atribuídas</h1>
 
-      <div className="bg-white rounded shadow p-4">
-        <h2 className="text-lg font-semibold mb-4">Ordens Atribuídas</h2>
-        {loading ? (
-          <p>Carregando...</p>
-        ) : assignedOrders.length === 0 ? (
-          <p>Nenhuma ordem atribuída.</p>
-        ) : (
-          <ul className="space-y-3">
-            {assignedOrders.map((order) => (
-              <li key={order.id} className="flex justify-between items-center border-b pb-2">
+      {orders.length === 0 ? (
+        <p className="text-center text-gray-600">Nenhuma ordem atribuída no momento.</p>
+      ) : (
+        orders.map((order) => (
+          <Card
+            key={order.id}
+            className="hover:shadow-lg transition-shadow rounded-lg border border-gray-200"
+          >
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row justify-between gap-6">
                 <div>
-                  <p className="font-medium">{order.title}</p>
-                  <small>Status: {order.status}</small>
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">{order.title}</h3>
+                  <p className="text-gray-700 mb-4">{order.description}</p>
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    <Badge className={getStatusColor(order.status)}>
+                      {getStatusText(order.status)}
+                    </Badge>
+                    <Badge className={getPriorityColor(order.priority)}>
+                      {getPriorityText(order.priority)}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5" /> {formatDate(order.createdAt)}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Building className="w-5 h-5" /> {order.establishmentName}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <User className="w-5 h-5" /> Cliente: {order.userName}
+                    </div>
+                  </div>
                 </div>
-                <Button
-                  variant="success"
-                  onClick={() => setCompleteModal({ open: true, orderId: order.id })}
-                >
-                  Finalizar
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
-      {/* Modal Finalização */}
-      {completeModal.open && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded p-6 w-96">
-            <h3 className="font-bold mb-4">Finalizar Ordem</h3>
-            <textarea
-              className="border w-full p-2 mb-4"
-              rows="3"
-              placeholder="Descreva o serviço realizado"
-              value={serviceDescription}
-              onChange={(e) => setServiceDescription(e.target.value)}
-            />
-            <div className="flex justify-end gap-2">
-              <Button onClick={() => setCompleteModal({ open: false, orderId: null })}>
-                Fechar
-              </Button>
-              <Button className="bg-green-500 text-white" onClick={handleCompleteOrder}>
-                Confirmar
-              </Button>
-            </div>
-          </div>
-        </div>
+                {/* Ações */}
+                <div className="flex flex-col gap-3 w-full md:w-64">
+                  {order.status === 'assigned' && (
+                    <Button
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                      onClick={() => handleStatusUpdate(order.id, 'in_progress')}
+                    >
+                      Iniciar
+                    </Button>
+                  )}
+                  {order.status === 'in_progress' && (
+                    <>
+                      <textarea
+                        placeholder="Descreva o serviço executado"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="border rounded-md p-2 w-full"
+                      />
+                      <Button
+                        className="bg-green-500 hover:bg-green-600 text-white"
+                        onClick={() => handleStatusUpdate(order.id, 'completed')}
+                      >
+                        Finalizar
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))
       )}
+
+      <div className="flex justify-end mt-6">
+        <Button className="bg-purple-500 hover:bg-purple-600 text-white" onClick={generatePDF}>
+          Gerar Relatório PDF
+        </Button>
+      </div>
     </div>
   );
-}
+};
+
+export default TechnicianDashboard;

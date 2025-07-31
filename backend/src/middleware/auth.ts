@@ -71,10 +71,28 @@ export const requireRole = (roles: UserType[]) => {
       return;
     }
 
-    if (!roles.includes(req.user.userType)) {
+    if (!roles.includes(req.user.userType as UserType)) {
       res.status(403).json({ error: 'Acesso negado. Permissões insuficientes.' });
       return;
     }
+
+    next();
+  };
+
+  
+};
+export const authorizeRoles = (...roles: UserType[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Usuário não autenticado' });
+      return;
+    }
+
+    if (!roles.includes(req.user.userType as UserType)) {
+      res.status(403).json({ error: 'Acesso negado. Permissões insuficientes.' });
+      return;
+    }
+    
 
     next();
   };

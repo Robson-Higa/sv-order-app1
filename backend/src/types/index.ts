@@ -153,4 +153,13 @@ export interface AuthRequest extends Request {
 }
 
 
+export interface AuthenticatedUser {
+  uid: string;
+  email: string;
+  userType: 'ADMIN' | 'TECHNICIAN' | 'END_USER';
+  name?: string;
+  phone?: string;
+}
+
+
 

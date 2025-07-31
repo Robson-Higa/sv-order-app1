@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import TextField from '@mui/material/TextField';
+import Autocomplete from '@mui/material/Autocomplete';
 
 const priorities = [
   { value: 'LOW', label: 'Baixa' },
@@ -16,10 +18,13 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
   const [priority, setPriority] = useState(defaultValues.priority || 'MEDIUM');
   const [establishmentName, setEstablishmentName] = useState(defaultValues.establishmentName || '');
   const [technicianId, setTechnicianId] = useState(defaultValues.technicianId || '');
+  const [sector, setSector] = useState(defaultValues.sector || '');
   const today = new Date().toISOString().split('T')[0];
   const [scheduledAt, setScheduledAt] = useState(defaultValues.scheduledAt || today);
   const [establishments, setEstablishments] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [titles, setTitles] = useState([]);
+  const [sectors, setSectors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingSelects, setLoadingSelects] = useState(false);
   const [error, setError] = useState({});
@@ -55,9 +60,27 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
   }, [user, token]);
 
   // Carregar listas para ADMIN
+  // Buscar títulos (para todos os usuários)
+  useEffect(() => {
+    async function fetchTitles() {
+      try {
+        const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const res = await fetch(`${baseURL}/api/titles`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setTitles(data.titles || []);
+      } catch (err) {
+        console.error('Erro ao buscar títulos:', err);
+      }
+    }
+    fetchTitles();
+  }, [token]);
+
+  // Buscar dados para ADMIN
   useEffect(() => {
     async function fetchData() {
-      if (String(user?.userType).toLowerCase() === 'admin') {
+      if (user?.userType?.toLowerCase() === 'admin') {
         setLoadingSelects(true);
         try {
           const headers = { Authorization: `Bearer ${token}` };
@@ -70,6 +93,10 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
           const resTechnicians = await fetch(`${baseURL}/api/users/technicians`, { headers });
           const dataTechnicians = await resTechnicians.json();
           setTechnicians(dataTechnicians.technicians || []);
+
+          const resSectors = await fetch(`${baseURL}/api/sectors`, { headers });
+          const dataSectors = await resSectors.json();
+          setSectors(dataSectors.sectors || []);
         } catch (err) {
           console.error('Erro ao carregar listas:', err);
         } finally {
@@ -78,7 +105,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
       }
     }
     fetchData();
-  }, [user]);
+  }, [user, token]);
 
   const validateForm = () => {
     const errors = {};
@@ -129,17 +156,27 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Título */}
+      {/* Título com Autocomplete */}
       <div>
-        <label className="block font-medium">Título *</label>
-        <input
-          ref={firstFieldRef}
-          className={`border rounded w-full p-2 ${error.title ? 'border-red-500' : ''}`}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+        <label className="block font-medium mb-1">Título *</label>
+        <Autocomplete
+          options={titles}
+          getOptionLabel={(option) => option.title || ''}
+          value={titles.find((t) => t.title === title) || null}
+          onChange={(_, newValue) => setTitle(newValue ? newValue.title : '')}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder="Selecione ou digite o título"
+              variant="outlined"
+              size="small"
+              error={!!error.title}
+              helperText={error.title}
+            />
+          )}
           disabled={loading}
+          freeSolo // permite digitar livremente, se desejar
         />
-        {error.title && <p className="text-red-500 text-sm">{error.title}</p>}
       </div>
 
       {/* Descrição */}
@@ -182,6 +219,27 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Setor com Autocomplete */}
+      <div>
+        <label className="block font-medium mb-1">Setor *</label>
+        <Autocomplete
+          options={sectors}
+          getOptionLabel={(option) => option.name || ''}
+          value={sectors.find((s) => s.name === sector) || null}
+          onChange={(_, newValue) => setSector(newValue ? newValue.name : '')}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder="Selecione ou digite o setor"
+              variant="outlined"
+              size="small"
+            />
+          )}
+          disabled={loading}
+          freeSolo // permite digitar livremente, se desejar
+        />
       </div>
 
       {/* Estabelecimento */}
