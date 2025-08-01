@@ -32,6 +32,7 @@ const EstablishmentsPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEstablishment, setEditingEstablishment] = useState(null);
   const [formData, setFormData] = useState({ name: '' });
+  const [sectorsList, setSectorsList] = useState(['']);
   const [searchTerm, setSearchTerm] = useState('');
 
   // ✅ Setores
@@ -86,7 +87,10 @@ const EstablishmentsPage = () => {
 
     setLoading(true);
     try {
-      const data = { name: formData.name.trim() };
+      const data = {
+        name: formData.name.trim(),
+        sectors: sectorsList.filter((s) => s.trim() !== ''),
+      };
 
       if (editingEstablishment) {
         await apiService.updateEstablishment(editingEstablishment.id, data);
@@ -98,6 +102,7 @@ const EstablishmentsPage = () => {
       setIsDialogOpen(false);
       setEditingEstablishment(null);
       setFormData({ name: '' });
+      setSectorsList(['']); // limpa setores
       setSectors([]);
     } catch (err) {
       console.error('Erro ao salvar estabelecimento:', err);
@@ -228,7 +233,6 @@ const EstablishmentsPage = () => {
               </DialogDescription>
             </DialogHeader>
 
-            {/* Formulário */}
             <form onSubmit={handleSubmit} className="grid gap-4 py-4">
               {error && (
                 <Alert variant="destructive">
@@ -248,10 +252,46 @@ const EstablishmentsPage = () => {
                 />
               </div>
 
-              {/* Seções de setores */}
+              {/* Campos de setores ao criar */}
+              {!editingEstablishment && (
+                <div className="grid gap-2">
+                  <Label>Setores</Label>
+                  {sectorsList.map((sector, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        value={sector}
+                        onChange={(e) => {
+                          const newList = [...sectorsList];
+                          newList[index] = e.target.value;
+                          setSectorsList(newList);
+                        }}
+                        placeholder={`Setor ${index + 1}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => {
+                          setSectorsList(sectorsList.filter((_, i) => i !== index));
+                        }}
+                      >
+                        Remover
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setSectorsList([...sectorsList, ''])}
+                  >
+                    Adicionar Setor
+                  </Button>
+                </div>
+              )}
+
+              {/* Campos ao editar */}
               {editingEstablishment && (
                 <div className="mt-4">
-                  <h4 className="font-semibold mb-2">Setores</h4>
+                  <h4 className="font-semibold mb-2">Setores Existentes</h4>
                   <ul className="space-y-2">
                     {sectors.map((sector) => (
                       <li key={sector.id} className="flex justify-between items-center">
@@ -271,7 +311,6 @@ const EstablishmentsPage = () => {
                       </li>
                     ))}
                   </ul>
-
                   {/* Adicionar novo setor */}
                   <div className="flex gap-2 mt-3">
                     <Input

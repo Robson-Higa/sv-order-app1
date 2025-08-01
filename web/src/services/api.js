@@ -67,11 +67,13 @@ export const apiService = {
 
   // Setores
   getSectors: (establishmentId) => api.get(`/establishments/${establishmentId}/sectors`),
-  updateSector: (establishmentId, sectorId, data) =>
-    api.patch(`/establishments/${establishmentId}/sectors/${sectorId}`, data),
+
+  createSector: (establishmentId, data) =>
+    api.post(`/establishments/${establishmentId}/sectors`, data),
 
   updateSector: (establishmentId, sectorId, data) =>
     api.put(`/establishments/${establishmentId}/sectors/${sectorId}`, data),
+
   deleteSector: (establishmentId, sectorId) =>
     api.delete(`/establishments/${establishmentId}/sectors/${sectorId}`),
 
@@ -93,6 +95,11 @@ export const apiService = {
   getDashboardStats: () => api.get('/dashboard/stats'),
   getRecentOrders: () => api.get('/dashboard/recent-orders'),
   getActiveOrders: () => api.get('/dashboard/active-orders'),
+
+  getServiceOrderStats: () => api.get('/service-orders/stats'),
+
+  // Estatísticas mensais (quantidade de ordens por mês)
+  getMonthlyServiceOrderStats: () => api.get('/service-orders/monthly-stats'),
 
   // Relatórios
   getReports: (filters = {}) => api.get('/reports', { params: filters }),

@@ -92,17 +92,28 @@ export const AuthProvider = ({ children }) => {
       const idToken = await firebaseUser.getIdToken();
 
       const apiResponse = await apiService.login({ idToken });
-      // Supondo que apiResponse tenha o formato: { user: ..., token: ... }
+      const { user, token } = apiResponse; // se corrigir no apiService
+      // OU se não corrigir lá, seria: const { user, token } = apiResponse.data;
 
-      if (apiResponse.user && apiResponse.token) {
-        localStorage.setItem('user', JSON.stringify(apiResponse.user));
-        localStorage.setItem('token', apiResponse.token);
-        setUser(apiResponse.user);
-        setToken(apiResponse.token);
-        return apiResponse.user;
+      if (user && token) {
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('token', token);
+        setUser(user);
+        setToken(token);
+        return user;
       } else {
         throw new Error('Resposta inválida do servidor');
       }
+
+      // if (apiResponse.user && apiResponse.token) {
+      //   localStorage.setItem('user', JSON.stringify(apiResponse.user));
+      //   localStorage.setItem('token', apiResponse.token);
+      //   setUser(apiResponse.user);
+      //   setToken(apiResponse.token);
+      //   return apiResponse.user;
+      // } else {
+      //   throw new Error('Resposta inválida do servidor');
+      // }
     } catch (err) {
       console.error('Erro no login:', err);
       let message = 'Erro ao fazer login';

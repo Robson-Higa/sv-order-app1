@@ -33,26 +33,41 @@ export class EstablishmentController {
     }
   }
 
-  async createEstablishment(req: AuthRequest, res: Response) {
-    try {
-      if (req.user?.userType !== UserType.ADMIN) {
-        return res.status(403).json({ error: 'Acesso negado' });
-      }
+ // controllers/EstablishmentController.ts
+async createEstablishment(req: Request, res: Response) {
+  try {
+    const { name, sectors = [] } = req.body;
 
-     const { name, responsibleName } = req.body;
-const newEstablishment = {
-  name,
-  responsibleName: responsibleName || null,
-  isActive: true,
-  createdAt: new Date().toISOString(),
-};
-await db.collection('establishments').add(newEstablishment);
-      const docRef = await db.collection('establishments').add(newEstablishment);
-      return res.status(201).json({ id: docRef.id, ...newEstablishment });
-    } catch (error) {
-      return res.status(500).json({ error: 'Erro ao criar estabelecimento.' });
+    if (!name) {
+      return res.status(400).json({ error: 'Nome é obrigatório' });
     }
+
+    const docRef = await db.collection('establishments').add({
+      name,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // ✅ Cria setores como subcoleção
+    for (const sector of sectors) {
+      if (sector && sector.trim()) {
+        await db.collection('establishments')
+          .doc(docRef.id)
+          .collection('sectors')
+          .add({
+            name: sector.trim(),
+            createdAt: new Date(),
+          });
+      }
+    }
+
+    return res.status(201).json({ id: docRef.id, name, sectors });
+  } catch (error) {
+    console.error('Erro ao criar estabelecimento:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
+}
 
   async updateEstablishment(req: AuthRequest, res: Response) {
     try {
