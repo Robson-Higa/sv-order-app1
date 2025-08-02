@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Clock, Building, User, CheckCircle } from 'lucide-react';
+import { Clock, Building, User, CheckCircle, XCircle, PauseCircle } from 'lucide-react';
+import jsPDF from 'jspdf';
 import FinishOrderModal from './components/FinishOrderModal';
+import ActionModal from './components/ActionModal';
+import { toast } from 'react-toastify';
+
+import { updateServiceOrderStatus } from '@/services/api';
 
 const TechnicianServiceOrders = () => {
   const { user } = useAuth();
@@ -15,6 +20,8 @@ const TechnicianServiceOrders = () => {
 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [currentAction, setCurrentAction] = useState(null);
 
   useEffect(() => {
     loadOrders();
@@ -24,11 +31,7 @@ const TechnicianServiceOrders = () => {
     try {
       setLoading(true);
       const response = await apiService.getServiceOrders({ technicianName: user.name });
-      if (response?.serviceOrders) {
-        setOrders(response.serviceOrders);
-      } else {
-        setOrders([]);
-      }
+      setOrders(response?.serviceOrders || []);
     } catch (error) {
       console.error('Erro ao carregar ordens:', error);
       setOrders([]);
@@ -43,15 +46,79 @@ const TechnicianServiceOrders = () => {
     setRefreshing(false);
   };
 
-  const handleFinishOrder = async (id, notes) => {
+  const handleStartOrder = async (id) => {
     try {
-      await apiService.updateStatus(id, 'PENDING_CONFIRMATION', notes);
+      // Primeiro, atribui a ordem ao técnico logado
+      await apiService.assignSelfToOrder(id);
+      // Depois, altera o status para "IN_PROGRESS"
+      await apiService.updateStatus(id, 'IN_PROGRESS');
+      toast.success('Atendimento iniciado!');
+      await loadOrders();
+    } catch (error) {
+      toast.error(error?.error || 'Erro ao iniciar atendimento');
+      console.error('Erro ao iniciar atendimento:', error);
+      alert('Não foi possível iniciar a ordem.');
+    }
+  };
+
+  const handleFinishOrder = async (id, { startTime, endTime, description }) => {
+    try {
+      await apiService.updateStatus(id, 'COMPLETED', {
+        technicianNotes: description,
+        startTime,
+        endTime,
+      });
+
+      // Gerar PDF
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text('Relatório de Atendimento', 10, 10);
+      doc.setFontSize(12);
+      doc.text(`OS: ${selectedOrder.orderNumber}`, 10, 20);
+      doc.text(`Título: ${selectedOrder.title}`, 10, 30);
+      doc.text(`Descrição: ${selectedOrder.description}`, 10, 40);
+      doc.text(`Cliente: ${selectedOrder.userName}`, 10, 50);
+      doc.text(`Estabelecimento: ${selectedOrder.establishmentName}`, 10, 60);
+      doc.text(`Início: ${new Date(startTime).toLocaleString()}`, 10, 70);
+      doc.text(`Fim: ${new Date(endTime).toLocaleString()}`, 10, 80);
+      doc.text('Descrição do serviço:', 10, 90);
+      doc.text(description, 10, 100);
+      doc.save(`Relatorio_${selectedOrder.orderNumber}.pdf`);
+
       setShowFinishModal(false);
       setSelectedOrder(null);
       await loadOrders();
     } catch (error) {
       console.error('Erro ao finalizar ordem:', error);
       alert('Não foi possível finalizar a ordem.');
+    }
+  };
+
+  const handleActionConfirm = async (action, reason) => {
+    try {
+      let status = '';
+      let updateData = {};
+
+      if (action === 'cancel') {
+        status = 'cancelled';
+        updateData = { cancellationReason: reason };
+      }
+      if (action === 'pause') {
+        // Seu backend não tem PAUSED no enum, precisa validar isso ou ajustar backend
+        status = 'in_progress'; // ou criar um status PAUSED no backend se quiser
+        // Para exemplo, vamos só usar in_progress e ignorar o pause
+        alert('Status "pausar" não está implementado no backend');
+        return;
+      }
+
+      await apiService.updateStatus(selectedOrder.id, status, updateData);
+      setShowActionModal(false);
+      setSelectedOrder(null);
+      setCurrentAction(null);
+      await loadOrders();
+    } catch (error) {
+      console.error(`Erro ao executar ação ${action}:`, error);
+      alert('Não foi possível realizar a ação.');
     }
   };
 
@@ -114,10 +181,10 @@ const TechnicianServiceOrders = () => {
                   <Clock className="w-4 h-4" />
                   Criada: {formatDate(order.createdAt)}
                 </div>
-                {order.establishment && (
+                {order.establishmentName && (
                   <div className="flex items-center gap-2">
                     <Building className="w-4 h-4" />
-                    {order.establishment.name}
+                    {order.establishmentName}
                   </div>
                 )}
                 <div className="flex items-center gap-2">
@@ -127,29 +194,86 @@ const TechnicianServiceOrders = () => {
               </div>
 
               {/* Ações */}
-              {order.status === 'IN_PROGRESS' && (
-                <div className="flex gap-2">
-                  <Button
-                    className="bg-green-600 text-white"
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      setShowFinishModal(true);
-                    }}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Finalizar Ordem
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2 mt-4 flex-wrap">
+                {order.status?.toUpperCase() === 'OPEN' && (
+                  <>
+                    <Button
+                      className="bg-blue-600 text-white"
+                      onClick={() => handleStartOrder(order.id)}
+                    >
+                      Iniciar Atendimento
+                    </Button>
+                    <Button
+                      className="bg-red-600 text-white flex items-center gap-2"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setCurrentAction('cancel');
+                        setShowActionModal(true);
+                      }}
+                    >
+                      <XCircle className="w-4 h-4" /> Cancelar
+                    </Button>
+                  </>
+                )}
+
+                {order.status?.toUpperCase() === 'IN_PROGRESS' && (
+                  <>
+                    <Button
+                      className="bg-green-600 text-white"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowFinishModal(true);
+                      }}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Finalizar Ordem
+                    </Button>
+                    <Button
+                      className="bg-yellow-500 text-white flex items-center gap-2"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setCurrentAction('pause');
+                        setShowActionModal(true);
+                      }}
+                    >
+                      <PauseCircle className="w-4 h-4" /> Pausar
+                    </Button>
+                    <Button
+                      className="bg-red-600 text-white flex items-center gap-2"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setCurrentAction('cancel');
+                        setShowActionModal(true);
+                      }}
+                    >
+                      <XCircle className="w-4 h-4" /> Cancelar
+                    </Button>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))
       )}
 
+      {/* Modal Finalizar */}
       {showFinishModal && (
         <FinishOrderModal
+          order={selectedOrder}
           onClose={() => setShowFinishModal(false)}
-          onConfirm={(notes) => handleFinishOrder(selectedOrder.id, notes)}
+          onConfirm={(data) => handleFinishOrder(selectedOrder.id, data)}
+        />
+      )}
+
+      {/* Modal Cancelar / Pausar */}
+      {showActionModal && (
+        <ActionModal
+          action={currentAction}
+          onClose={() => {
+            setShowActionModal(false);
+            setCurrentAction(null);
+          }}
+          onConfirm={handleActionConfirm}
         />
       )}
     </div>

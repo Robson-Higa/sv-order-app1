@@ -1,42 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../../../components/ui/button';
-import { Textarea } from '../../../components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 
-const FinishOrderModal = ({ onClose, onConfirm }) => {
-  const [notes, setNotes] = useState('');
+const FinishOrderModal = ({ order, onClose, onConfirm }) => {
+  const [startTime] = useState(order.startTime || new Date().toISOString());
+  const [endTime] = useState(new Date().toISOString());
+  const [description, setDescription] = useState('');
 
   const handleConfirm = () => {
-    if (!notes.trim()) {
-      alert('Descreva o serviço executado');
+    if (!description.trim()) {
+      alert('Descreva o serviço realizado');
       return;
     }
-    onConfirm(notes);
+    onConfirm({ startTime, endTime, description });
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-lg bg-white shadow-lg">
-        <CardHeader>
-          <CardTitle>Finalizar Ordem</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-gray-600">Descreva o serviço realizado:</p>
-          <Textarea
-            placeholder="Detalhes do serviço..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
+        <h2 className="text-xl font-bold mb-4">Finalizar Ordem</h2>
+
+        <div className="space-y-2 text-sm text-gray-700">
+          <p>
+            <strong>OS:</strong> {order.title}
+          </p>
+          <p>
+            <strong>Descrição:</strong> {order.description}
+          </p>
+          <p>
+            <strong>Cliente:</strong> {order.userName}
+          </p>
+          <p>
+            <strong>Estabelecimento:</strong> {order.establishment?.name}
+          </p>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <textarea
+            className="w-full border rounded p-2"
+            placeholder="Descrição do serviço executado"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
           />
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button className="bg-green-600 text-white" onClick={handleConfirm}>
-              Confirmar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <Button onClick={onClose} className="bg-gray-400">
+            Cancelar
+          </Button>
+          <Button onClick={handleConfirm} className="bg-green-600 text-white">
+            Finalizar
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

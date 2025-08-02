@@ -209,6 +209,112 @@ export class ServiceOrderController {
     }
   }
 
+ async updateStatus(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const { status, technicianNotes, reason, startTime, endTime } = req.body;
+    const user = req.user;
+
+    const serviceOrderDoc = db.collection('serviceOrders').doc(id);
+    const serviceOrderSnapshot = await serviceOrderDoc.get();
+
+    if (!serviceOrderSnapshot.exists) {
+      return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+    }
+
+    const serviceOrder = serviceOrderSnapshot.data() as ServiceOrder;
+
+    // Atualizações
+    const updates: Partial<ServiceOrder> = {
+      updatedAt: new Date(),
+    };
+
+    if (status) updates.status = status;
+    if (technicianNotes !== undefined) updates.technicianNotes = technicianNotes;
+    if (reason !== undefined) updates.cancellationReason = reason;
+    if (startTime) updates.startTime = new Date(startTime);
+    if (endTime) updates.endTime = new Date(endTime);
+
+    // Se status for COMPLETED, registra hora de conclusão
+    if (status === ServiceOrderStatus.COMPLETED) {
+      updates.completedAt = new Date();
+    }
+
+    // ✅ Permitir que um técnico assuma a OS ao iniciar
+    if (!serviceOrder.technicianId && status === ServiceOrderStatus.IN_PROGRESS && user?.userType === UserType.TECHNICIAN) {
+      updates.technicianId = user.uid;
+      updates.technicianName = user.name || '';
+    }
+
+    // Validação de permissão (considera atribuição automática)
+    if (
+      user?.userType !== UserType.ADMIN &&
+      !(user?.userType === UserType.TECHNICIAN && (serviceOrder.technicianId === user.uid || updates.technicianId === user.uid))
+    ) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    await serviceOrderDoc.update(updates);
+
+    const updatedDoc = await serviceOrderDoc.get();
+
+    return res.status(200).json({
+      message: 'Status da ordem atualizado com sucesso',
+      serviceOrder: {
+        id: updatedDoc.id,
+        ...updatedDoc.data(),
+      },
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar status da ordem:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
+
+async assignSelfToOrder(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    }
+
+    const serviceOrderDoc = db.collection('serviceOrders').doc(id);
+    const serviceOrderSnapshot = await serviceOrderDoc.get();
+
+    if (!serviceOrderSnapshot.exists) {
+      return res.status(404).json({ error: 'Ordem de serviço não encontrada' });
+    }
+
+    const serviceOrder = serviceOrderSnapshot.data();
+
+    if (!serviceOrder) {
+      return res.status(404).json({ error: 'Dados da ordem de serviço não encontrados' });
+    }
+
+    if (serviceOrder.technicianId) {
+      return res.status(400).json({ error: 'Ordem já está atribuída a um técnico' });
+    }
+
+    await serviceOrderDoc.update({
+      technicianId: user.uid,
+      updatedAt: new Date(),
+    });
+
+    const updatedDoc = await serviceOrderDoc.get();
+
+    return res.status(200).json({
+      message: 'Ordem atribuída ao técnico com sucesso',
+      serviceOrder: { id: updatedDoc.id, ...updatedDoc.data() },
+    });
+  } catch (error) {
+    console.error('Erro ao atribuir ordem ao técnico:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
+
+
   async getMonthlyServiceOrderStats(req: AuthRequest, res: Response) {
     try {
       const user = req.user;

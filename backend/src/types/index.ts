@@ -71,6 +71,8 @@ export interface Establishment {
     cancellationReason?: string;
     feedback?: string;
     useConfimed?: boolean;
+    startTime?: Date;
+  endTime?: Date;
   }
 
 export enum ServiceOrderStatus {

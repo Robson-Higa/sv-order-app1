@@ -121,6 +121,7 @@ export const apiService = {
   getActiveOrders: () => api.get('/dashboard/active-orders'),
 
   getServiceOrderStats: () => api.get('/service-orders/stats'),
+  assignSelfToOrder: (id) => api.patch(`/service-orders/${id}/assign-self`),
 
   // Estatísticas mensais (quantidade de ordens por mês)
   getMonthlyServiceOrderStats: () => api.get('/service-orders/monthly-stats'),
@@ -146,4 +147,17 @@ export async function fetchTechnicians() {
 export async function fetchEstablishments() {
   const snapshot = await getDocs(collection(db, 'establishments'));
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function updateServiceOrderStatus(orderId, status, extraData = {}) {
+  try {
+    const response = await api.patch(`/service-orders/${orderId}/status`, {
+      status,
+      ...extraData,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('API error:', error);
+    throw error.response?.data || { error: 'Erro ao atualizar status da ordem' };
+  }
 }
