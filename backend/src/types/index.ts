@@ -2,7 +2,7 @@ import { Request } from 'express';
 
 export interface User {
   uid: string;
-  email?: string;
+  email: string; // Agora obrigatório
   name: string;
     phone?: string;
   userType: UserType;
@@ -11,6 +11,7 @@ export interface User {
   updatedAt: Date;
   isActive: boolean;
   password?: string;
+  avatarUrl?: null | string; // URL do avatar, pode ser null se não houver avatar
 }
 
 export enum UserType {
@@ -87,10 +88,6 @@ export enum Priority {
   HIGH = 'HIGH'
 }
 
-export interface AuthRequest extends Request {
-  user?: User;
-}
-
 export interface LoginRequest {
   email: string;
   password: string;
@@ -149,16 +146,19 @@ export interface AdminStats extends DashboardStats {
 
 
 export interface AuthRequest extends Request {
-  user?: User;
+  user?: AuthenticatedUser;
 }
+
 
 
 export interface AuthenticatedUser {
   uid: string;
   email: string;
-  userType: 'ADMIN' | 'TECHNICIAN' | 'END_USER';
+  userType: UserType; // Use o enum UserType para manter compatibilidade
   name?: string;
   phone?: string;
+  establishmentId?: string | null;
+  createdAt?: Date;
 }
 
 

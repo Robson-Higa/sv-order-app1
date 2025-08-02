@@ -10,6 +10,8 @@ import ServiceOrderCreatePage from './pages/ServiceOrderCreatePage';
 import UsersAdminPage from './pages/UsersAdminPage';
 import EstablishmentsPage from './pages/EstablishmentsPage';
 import ReportsPage from './pages/ReportsPage';
+import ProfilePage from './pages/profilePage';
+
 import './App.css';
 import { Toaster } from 'react-hot-toast';
 
@@ -139,7 +141,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Layout>
-              <div className="p-6 text-center">Página de Perfil</div>
+              <ProfilePage />
             </Layout>
           </ProtectedRoute>
         }

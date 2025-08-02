@@ -88,6 +88,7 @@ const Layout = ({ children }) => {
   const isActivePath = (path) => {
     return location.pathname === path;
   };
+  console.log('user no Layout:', user);
 
   return (
     <div className="lg:pl-64 w-full">
@@ -152,9 +153,17 @@ const Layout = ({ children }) => {
         <div className="p-4 border-t bg-gray-50">
           <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8">
-              <AvatarFallback className="bg-blue-600 text-white text-xs">
-                {getInitials(user?.name || 'U')}
-              </AvatarFallback>
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={`${user.name} avatar`}
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <AvatarFallback className="bg-blue-600 text-white text-xs">
+                  {getInitials(user?.name || 'U')}
+                </AvatarFallback>
+              )}
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
@@ -190,9 +199,17 @@ const Layout = ({ children }) => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-blue-600 text-white">
-                      {getInitials(user?.name || 'U')}
-                    </AvatarFallback>
+                    {user?.avatarUrl ? (
+                      <img
+                        src={user.avatarUrl}
+                        alt="Avatar"
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback className="bg-blue-600 text-white">
+                        {getInitials(user?.name || 'U')}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>

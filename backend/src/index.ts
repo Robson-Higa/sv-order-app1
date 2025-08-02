@@ -15,21 +15,28 @@ import reportRoutes from './routes/report'
 import titleRoutes from './routes/titles';
 import sectorRoutes from './routes/sectors';
 
-
+import path from 'path';
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-// Middleware de segurança
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
 
 // CORS configurado para permitir acesso do frontend
 app.use(cors({
   origin: 'http://localhost:5173', // ou '*' para liberar geral (não recomendado em produção)
   credentials: true
 }));
+
+
+app.use('/images', express.static(path.join(__dirname, '../public/images')));
 
 // Middleware de parsing
 app.use(express.json({ limit: '10mb' }));

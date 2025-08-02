@@ -1,9 +1,13 @@
 import { Request, Response } from 'express';
-import { db } from '../config/firebase';
+import storage, { db} from '../config/firebase';
+
 import { User, UserType, AuthRequest } from '../types';
 import { sanitizeUser, generateId, hashPassword } from '../utils/helpers';
-
+import multer from 'multer';
 import * as admin from 'firebase-admin'; 
+
+import fs from 'fs';
+import path from 'path';
 
 export class UserController {
 async getAllUsers(req: AuthRequest, res: Response) {
@@ -26,31 +30,57 @@ async getAllUsers(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
+async uploadAvatar(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const { avatarBase64 } = req.body;
 
+    if (!avatarBase64) {
+      return res.status(400).json({ error: 'Nenhuma imagem enviada' });
+    }
 
-  async getUserById(req: AuthRequest, res: Response) {
-    try {
-      const { id } = req.params;
+    // Atualizar documento do usuário com o Base64
+    await db.collection('users').doc(id).update({
+      avatarBase64,
+      updatedAt: new Date()
+    });
 
-      // Verificar permissões
-      if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
-        return res.status(403).json({ error: 'Acesso negado' });
-      }
+    return res.json({ message: 'Avatar atualizado com sucesso', avatarBase64 });
+  } catch (error) {
+    console.error('Erro ao salvar avatar:', error);
+    return res.status(500).json({ error: 'Erro interno ao salvar avatar' });
+  }
+}
 
-      const userDoc = await db.collection('users').doc(id).get();
+async getUserById(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
 
-      if (!userDoc.exists) {
-        return res.status(404).json({ error: 'Usuário não encontrado' });
-      }
+    // Verificar permissões: Admin ou o próprio usuário
+    if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
+
+    const userDoc = await db.collection('users').doc(id).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
 
     const userData = userDoc.data() as User;
-return res.json({ user: sanitizeUser({ ...userData, uid: userDoc.id }) });
 
-    } catch (error) {
-      console.error('Erro ao buscar usuário:', error);
-      return res.status(500).json({ error: 'Erro interno do servidor' });
-    }
+    const sanitizedUser = {
+      ...sanitizeUser(userData),
+      uid: userDoc.id,
+      avatarUrl: userData.avatarUrl || null, // garante que venha mesmo se não existir
+    };
+
+    return res.json({ user: sanitizedUser });
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
+}
 
 async getUsersByType(req: AuthRequest, res: Response) {
   try {
@@ -128,7 +158,6 @@ async createUser(req: AuthRequest, res: Response) {
   }
 
   try {
-    // Criar usuário no Firebase Auth
     const userRecord = await admin.auth().createUser({
       email,
       password,
@@ -136,6 +165,9 @@ async createUser(req: AuthRequest, res: Response) {
       phoneNumber: phone || undefined,
       disabled: false,
     });
+
+    // URL pública do avatar padrão
+    const avatarUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/images/avatarPadrao.webp`;
 
     const userData: User = {
       uid: userRecord.uid,
@@ -147,6 +179,7 @@ async createUser(req: AuthRequest, res: Response) {
       establishmentId: userType === UserType.END_USER ? establishmentId : null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      avatarUrl,
     };
 
     await db.collection('users').doc(userRecord.uid).set(userData);
@@ -154,70 +187,46 @@ async createUser(req: AuthRequest, res: Response) {
     return res.status(201).json({ user: sanitizeUser(userData) });
   } catch (error: any) {
     console.error('Erro ao criar usuário:', error);
-
     if (error.code === 'auth/email-already-exists') {
       return res.status(400).json({ error: 'Email já cadastrado' });
     }
-
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
 
- async updateUser(req: AuthRequest, res: Response) {
+
+async updateUser(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
-    const { name, email, establishmentId, isActive } = req.body;
+    const { name, email, phone, userType, avatarUrl } = req.body;
 
-    // Verificar permissões
+    // Permissão: Admin ou dono do perfil
     if (req.user?.userType !== UserType.ADMIN && req.user?.uid !== id) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
     const userRef = db.collection('users').doc(id);
-    const userSnapshot = await userRef.get();
+    const userDoc = await userRef.get();
 
-    if (!userSnapshot.exists) {
+    if (!userDoc.exists) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    const updateData: Partial<User> = {
+    const updates: any = {
       updatedAt: new Date(),
     };
 
-    if (name) updateData.name = name;
-
-    if (email) {
-      const emailCheck = await db.collection('users')
-        .where('email', '==', email)
-        .get();
-
-      const emailInUseByAnotherUser = emailCheck.docs.some(doc => doc.id !== id);
-
-      if (emailInUseByAnotherUser) {
-        return res.status(400).json({ error: 'Email já está em uso' });
-      }
-
-      updateData.email = email;
+    if (name) updates.name = name;
+    if (email) updates.email = email;
+    if (phone) updates.phone = phone;
+    if (avatarUrl !== undefined) updates.avatarUrl = avatarUrl; // aceita vazio ou base64
+    if (req.user?.userType === UserType.ADMIN && userType) {
+      updates.userType = userType; // apenas admin pode mudar tipo
     }
 
-    if (establishmentId !== undefined) {
-      updateData.establishmentId = establishmentId;
-    }
+    await userRef.update(updates);
 
-    if (req.user?.userType === UserType.ADMIN && isActive !== undefined) {
-      updateData.isActive = isActive;
-    }
-
-    await userRef.update(updateData);
-
-    const updatedUserSnapshot = await userRef.get();
-    const updatedUserData = updatedUserSnapshot.data() as User;
-
-    return res.json({
-  message: 'Usuário atualizado com sucesso',
-  user: sanitizeUser({ ...updatedUserData, uid: userRef.id }),
-});
-
+    return res.json({ message: 'Usuário atualizado com sucesso' });
   } catch (error) {
     console.error('Erro ao atualizar usuário:', error);
     return res.status(500).json({ error: 'Erro interno do servidor' });
@@ -354,5 +363,41 @@ async createUser(req: AuthRequest, res: Response) {
       return;
     }
   }
+
+  async getProfile(req: AuthRequest, res: Response) {
+    if (!req.user) return res.status(401).json({ error: 'Não autenticado' });
+    // Busque o usuário pelo req.user.uid
+    const userDoc = await db.collection('users').doc(req.user.uid).get();
+    if (!userDoc.exists) return res.status(404).json({ error: 'Usuário não encontrado' });
+    return res.json({ user: userDoc.data() });
+  }
+
+  async getCurrentUser(req: AuthRequest, res: Response) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    }
+
+    const userDoc = await db.collection('users').doc(req.user.uid).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const userData = userDoc.data() as User;
+
+    const sanitizedUser = {
+      ...sanitizeUser(userData),
+      uid: userDoc.id,
+      avatarUrl: userData.avatarUrl || null, // ✅ Inclui avatar mesmo se não existir
+    };
+
+    return res.json({ user: sanitizedUser });
+  } catch (error) {
+    console.error('Erro ao buscar usuário atual:', error);
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
 }
+
+};
 

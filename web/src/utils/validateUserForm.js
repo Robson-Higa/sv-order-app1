@@ -46,8 +46,8 @@ export const validateUserForm = (formData, setError) => {
     return false;
   }
 
-  if (formData.userType !== 'ADMIN' && !formData.establishmentId) {
-    setError('Estabelecimento é obrigatório para técnicos e usuários finais');
+  if (formData.userType === 'END_USER' && !formData.establishmentId) {
+    setError('Estabelecimento é obrigatório para usuários finais');
     return false;
   }
 

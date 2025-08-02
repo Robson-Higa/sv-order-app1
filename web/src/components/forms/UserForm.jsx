@@ -3,6 +3,7 @@ import { apiService, fetchEstablishments } from '../../services/api';
 import { UserType } from '../../types/index';
 import { Button } from '../../components/ui/button';
 import { validateUserForm } from '../../utils/validateUserForm';
+import toast from 'react-hot-toast';
 
 const UserForm = ({ onUserCreated }) => {
   const [formData, setFormData] = useState({
@@ -15,7 +16,6 @@ const UserForm = ({ onUserCreated }) => {
   });
   const [establishments, setEstablishments] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     async function loadEstablishments() {
@@ -23,6 +23,7 @@ const UserForm = ({ onUserCreated }) => {
         const data = await fetchEstablishments();
         setEstablishments(data);
       } catch (err) {
+        toast.error('Erro ao carregar estabelecimentos.');
         console.error('Erro ao carregar estabelecimentos:', err);
       }
     }
@@ -53,13 +54,24 @@ const UserForm = ({ onUserCreated }) => {
     return `+55${digits}`;
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      phone: '',
+      userType: UserType.END_USER,
+      establishmentId: '',
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateUserForm(formData, setError)) return;
+    // ✅ Validação do formulário
+    if (!validateUserForm(formData, (errMsg) => toast.error(errMsg))) return;
 
     setLoading(true);
-    setError('');
 
     try {
       const formattedPhone = formatPhoneNumber(formData.phone);
@@ -74,11 +86,22 @@ const UserForm = ({ onUserCreated }) => {
       };
 
       await apiService.createUser(userData);
-      if (typeof onSubmit === 'function') {
-        await onSubmit(userData);
+
+      toast.success('Usuário cadastrado com sucesso!');
+
+      if (typeof onUserCreated === 'function') {
+        await onUserCreated(userData);
       }
+
+      resetForm();
     } catch (error) {
-      setError(error.message || 'Erro ao criar conta. Tente novamente.');
+      console.error(error);
+
+      // ✅ Mostra mensagem do servidor ou genérica
+      const message =
+        error.response?.data?.error || error.message || 'Erro ao criar conta. Tente novamente.';
+
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -86,8 +109,6 @@ const UserForm = ({ onUserCreated }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <p className="text-red-500">{error}</p>}
-
       <input
         type="text"
         name="name"

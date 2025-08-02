@@ -29,6 +29,8 @@ export function sanitizeUser(user: User): Partial<User> {
     establishmentId: user.establishmentId || null,
     createdAt: user.createdAt || null,
     updatedAt: user.updatedAt || null,
+    avatarUrl: user.avatarUrl || null, // garante que venha mesmo que seja vazio
+    // Não expor password por segurança
   };
 }
 

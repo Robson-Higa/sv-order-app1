@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }) => {
       const idToken = await firebaseUser.getIdToken();
 
       const apiResponse = await apiService.login({ idToken });
-      const { user, token } = apiResponse; // se corrigir no apiService
+      const { user, token } = apiResponse.data; // se corrigir no apiService
       // OU se não corrigir lá, seria: const { user, token } = apiResponse.data;
 
       if (user && token) {

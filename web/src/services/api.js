@@ -57,6 +57,30 @@ export const apiService = {
   deleteUser: (id) => api.delete(`/users/${id}`),
   activateUser: (id) => api.patch(`/users/${id}/activate`),
 
+  getUserById: async (uid) => {
+    const res = await axios.get(`${API_BASE}/users/${uid}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+    return res.data;
+  },
+
+  updateUser: async (uid, data) => {
+    const res = await axios.put(`${API_BASE}/users/${uid}`, data, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+    return res.data;
+  },
+
+  uploadAvatar: async (formData) => {
+    const res = await axios.post(`${API_BASE}/users/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+    return res.data;
+  },
+
   /** ===================== ESTABELECIMENTOS ===================== **/
   getEstablishments: () => api.get('/establishments'),
   createEstablishment: (data) => api.post('/establishments', data),
@@ -107,6 +131,9 @@ export const apiService = {
   getStatusPercentage: (params) => api.get('/reports/status-percentage', { params }),
   getOrdersByEstablishment: (params) => api.get('/reports/by-establishment', { params }),
   getOrdersByTechnician: (params) => api.get('/reports/by-technician', { params }),
+
+  /** ===================== USUÁRIO ATUAL ===================== **/
+  getCurrentUser: () => api.get('/users/me'),
 };
 
 /** ===================== FIRESTORE AUXILIAR ===================== **/
