@@ -1,41 +1,56 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
+import { useTechnicianStats } from '../../hooks/useTechnicianStats';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Clock, Building, User } from 'lucide-react';
 import { getStatusText, getStatusColor, getPriorityText, getPriorityColor } from '../../types';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 const TechnicianDashboard = () => {
+  const { user } = useAuth();
+  const { stats, monthlyData, loading, reload } = useTechnicianStats(user?.uid);
+
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingOrders, setLoadingOrders] = useState(true);
   const [notes, setNotes] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
+    async function loadOrders() {
+      try {
+        setLoadingOrders(true);
+        const response = await apiService.getServiceOrders({ scope: 'mine', limit: 20 });
+        if (response?.serviceOrders) {
+          setOrders(
+            response.serviceOrders.filter((order) =>
+              ['assigned', 'in_progress'].includes(order.status)
+            )
+          );
+        }
+      } catch (error) {
+        console.error('Erro ao carregar ordens:', error);
+        setOrders([]);
+      } finally {
+        setLoadingOrders(false);
+      }
+    }
     loadOrders();
   }, []);
-
-  const loadOrders = async () => {
+  async function loadMonthlyStats() {
     try {
-      setLoading(true);
-      const response = await apiService.getServiceOrders({ scope: 'mine', limit: 20 });
-      if (response?.serviceOrders) {
-        setOrders(
-          response.serviceOrders.filter((order) =>
-            ['assigned', 'in_progress'].includes(order.status)
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Erro ao carregar ordens:', error);
-      setOrders([]);
-    } finally {
-      setLoading(false);
+      const res = await apiService.getMonthlyServiceOrderStats({
+        establishmentId: user.establishmentId,
+      });
+      setMonthlyData(res.monthlyData || []);
+    } catch (err) {
+      console.error('Erro ao carregar estatísticas mensais:', err);
     }
-  };
+  }
 
   const handleStatusUpdate = async (id, status) => {
     try {
@@ -43,6 +58,7 @@ const TechnicianDashboard = () => {
       setSelectedOrder(null);
       setNotes('');
       loadOrders();
+      reload();
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
     }
@@ -55,13 +71,16 @@ const TechnicianDashboard = () => {
     const tableRows = [];
 
     orders
-      .filter((order) => order.status === 'completed')
+      .filter((order) => order.status.toLowerCase() === 'completed')
       .forEach((order) => {
+        const updatedAtDate = order.updatedAt?.seconds
+          ? new Date(order.updatedAt.seconds * 1000)
+          : new Date(order.updatedAt);
         const row = [
           order.orderNumber,
           order.title,
           order.establishmentName,
-          new Date(order.updatedAt?.seconds * 1000).toLocaleDateString('pt-BR'),
+          updatedAtDate.toLocaleDateString('pt-BR'),
         ];
         tableRows.push(row);
       });
@@ -82,78 +101,65 @@ const TechnicianDashboard = () => {
     });
   };
 
-  if (loading) return <p>Carregando ordens...</p>;
+  if (loadingOrders) return <p>Carregando ordens...</p>;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto px-4">
-      <h1 className="text-3xl font-extrabold mb-6 text-gray-900">Minhas Ordens Atribuídas</h1>
+    <div className="p-6 space-y-8">
+      <h1 className="text-2xl font-bold">Bem-vindo, {user?.name}</h1>
 
-      {orders.length === 0 ? (
-        <p className="text-center text-gray-600">Nenhuma ordem atribuída no momento.</p>
-      ) : (
-        orders.map((order) => (
-          <Card
-            key={order.id}
-            className="hover:shadow-lg transition-shadow rounded-lg border border-gray-200"
-          >
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row justify-between gap-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">{order.title}</h3>
-                  <p className="text-gray-700 mb-4">{order.description}</p>
-                  <div className="flex flex-wrap gap-3 mb-4">
-                    <Badge className={getStatusColor(order.status)}>
-                      {getStatusText(order.status)}
-                    </Badge>
-                    <Badge className={getPriorityColor(order.priority)}>
-                      {getPriorityText(order.priority)}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5" /> {formatDate(order.createdAt)}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Building className="w-5 h-5" /> {order.establishmentName}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <User className="w-5 h-5" /> Cliente: {order.userName}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ações */}
-                <div className="flex flex-col gap-3 w-full md:w-64">
-                  {order.status === 'assigned' && (
-                    <Button
-                      className="bg-blue-500 hover:bg-blue-600 text-white"
-                      onClick={() => handleStatusUpdate(order.id, 'in_progress')}
-                    >
-                      Iniciar
-                    </Button>
-                  )}
-                  {order.status === 'in_progress' && (
-                    <>
-                      <textarea
-                        placeholder="Descreva o serviço executado"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        className="border rounded-md p-2 w-full"
-                      />
-                      <Button
-                        className="bg-green-500 hover:bg-green-600 text-white"
-                        onClick={() => handleStatusUpdate(order.id, 'completed')}
-                      >
-                        Finalizar
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))
+      {/* Cards de Totais */}
+      {stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-blue-100 p-4 rounded shadow text-center">
+            <p className="text-lg font-bold text-blue-700">{stats.assigned || 0}</p>
+            <p className="text-sm text-blue-600">Atribuídas</p>
+          </div>
+          <div className="bg-yellow-100 p-4 rounded shadow text-center">
+            <p className="text-lg font-bold text-yellow-700">{stats.in_progress || 0}</p>
+            <p className="text-sm text-yellow-600">Em Andamento</p>
+          </div>
+          <div className="bg-green-100 p-4 rounded shadow text-center">
+            <p className="text-lg font-bold text-green-700">{stats.completed || 0}</p>
+            <p className="text-sm text-green-600">Concluídas</p>
+          </div>
+        </div>
       )}
+
+      {/* Gráfico */}
+      <div className="bg-white rounded shadow p-4">
+        <h2 className="text-lg font-semibold mb-4">Evolução das Ordens (Últimos 12 meses)</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={monthlyData}>
+            <XAxis dataKey="month" />
+            <YAxis allowDecimals={false} />
+            <Tooltip />
+            <Legend />
+            <Bar
+              type="monotone"
+              dataKey="assigned"
+              name="Atribuídas"
+              stroke="#3B82F6"
+              strokeWidth={2}
+            />
+            <Bar
+              type="monotone"
+              dataKey="in_progress"
+              name="Em Andamento"
+              stroke="#F59E0B"
+              strokeWidth={2}
+            />
+            <Bar
+              type="monotone"
+              dataKey="completed"
+              name="Concluídas"
+              stroke="#10B981"
+              strokeWidth={2}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Lista de ordens (a implementar conforme seu código anterior) */}
 
       <div className="flex justify-end mt-6">
         <Button className="bg-purple-500 hover:bg-purple-600 text-white" onClick={generatePDF}>

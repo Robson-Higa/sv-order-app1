@@ -100,9 +100,9 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
           const dataTechnicians = await resTechnicians.json();
           setTechnicians(dataTechnicians.technicians || []);
 
-          const resSectors = await fetch(`${baseURL}/api/sectors`, { headers });
-          const dataSectors = await resSectors.json();
-          setSectors(dataSectors.sectors || []);
+          // const resSectors = await fetch(`${baseURL}/api/sectors`, { headers });
+          // const dataSectors = await resSectors.json();
+          // setSectors(dataSectors.sectors || []);
         } catch (err) {
           console.error('Erro ao carregar listas:', err);
         } finally {
@@ -135,6 +135,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
         description: description.trim(),
         priority,
         establishmentName,
+        sector, // ✅ adicionando setor
         ...(scheduledAt && { scheduledAt }),
       };
 
@@ -162,15 +163,14 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
 
   const fetchSectorsByEstablishment = async (establishmentId) => {
     try {
-      const headers = { Authorization: `Bearer ${token}` };
       const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const headers = { Authorization: `Bearer ${token}` };
 
       const res = await fetch(`${baseURL}/api/establishments/${establishmentId}/sectors`, {
         headers,
       });
 
       if (!res.ok) throw new Error('Erro ao buscar setores');
-
       const data = await res.json();
       setSectors(data.sectors || []);
     } catch (err) {
@@ -245,27 +245,6 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
           ))}
         </select>
       </div>
-
-      {/* Setor com Autocomplete */}
-      <div>
-        <label className="block font-medium mb-1">Setor *</label>
-        <Autocomplete
-          options={sectors}
-          getOptionLabel={(option) => option.name || ''}
-          value={sectors.find((s) => s.name === sector) || null}
-          onChange={(_, newValue) => setSector(newValue ? newValue.name : '')}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              placeholder="Selecione ou digite o setor"
-              variant="outlined"
-              size="small"
-            />
-          )}
-          disabled={loading || sectors.length === 0}
-        />
-      </div>
-
       {/* Estabelecimento */}
       <div>
         <label className="block font-medium">Estabelecimento *</label>
@@ -303,6 +282,25 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
         {error.establishmentName && (
           <p className="text-red-500 text-sm">{error.establishmentName}</p>
         )}
+      </div>
+      {/* Setor com Autocomplete */}
+      <div>
+        <label className="block font-medium mb-1">Setor *</label>
+        <Autocomplete
+          options={sectors}
+          getOptionLabel={(option) => option.name || ''}
+          value={sectors.find((s) => s.name === sector) || null}
+          onChange={(_, newValue) => setSector(newValue ? newValue.name : '')}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder="Selecione ou digite o setor"
+              variant="outlined"
+              size="small"
+            />
+          )}
+          disabled={loading || sectors.length === 0}
+        />
       </div>
 
       {/* Técnico */}

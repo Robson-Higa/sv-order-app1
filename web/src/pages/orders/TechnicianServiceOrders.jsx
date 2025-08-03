@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import FinishOrderModal from './components/FinishOrderModal';
 import ActionModal from './components/ActionModal';
 import { toast } from 'react-toastify';
+import { getStatusText } from '../../types';
 
 import { updateServiceOrderStatus } from '@/services/api';
 
@@ -122,8 +123,22 @@ const TechnicianServiceOrders = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
+  // ✅ Corrige Firestore Timestamp
+  const formatDate = (dateValue) => {
+    if (!dateValue) return 'Data indisponível';
+    let date;
+
+    if (dateValue._seconds) {
+      date = new Date(dateValue._seconds * 1000);
+    } else if (typeof dateValue.toDate === 'function') {
+      date = dateValue.toDate();
+    } else {
+      date = new Date(dateValue);
+    }
+
+    if (isNaN(date.getTime())) return 'Data inválida';
+
+    return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -151,7 +166,7 @@ const TechnicianServiceOrders = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Minhas Ordens de Serviço</h1>
+        <h1 className="text-2xl font-bold">Ordens de Serviço</h1>
         <Button onClick={handleRefresh} disabled={refreshing}>
           {refreshing ? 'Atualizando...' : 'Atualizar'}
         </Button>
@@ -173,13 +188,12 @@ const TechnicianServiceOrders = () => {
                   <h3 className="text-lg font-semibold">{order.title}</h3>
                   <p className="text-gray-600">{order.description}</p>
                 </div>
-                <Badge className="bg-blue-500 text-white">{order.status}</Badge>
+                <Badge className="bg-blue-500 text-white">{getStatusText(order.status)}</Badge>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Criada: {formatDate(order.createdAt)}
+                  <Clock className="w-5 h-5 text-gray-400" /> Criada: {formatDate(order.createdAt)}
                 </div>
                 {order.establishmentName && (
                   <div className="flex items-center gap-2">
@@ -187,9 +201,15 @@ const TechnicianServiceOrders = () => {
                     {order.establishmentName}
                   </div>
                 )}
+                {order.sectorName && (
+                  <div className="flex items-center gap-2">
+                    <Building className="w-4 h-4" />
+                    Setor: {order.sectorName}
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  Cliente: {order.userName || 'N/A'}
+                  Solicitante: {order.userName || 'N/A'}
                 </div>
               </div>
 

@@ -34,6 +34,9 @@ router.patch('/:id/cancel', serviceOrderController.cancelServiceOrder);
 
 // Feedback do usuário
 router.patch('/:id/feedback', validateFeedback, serviceOrderController.updateServiceOrder);
+router.post('/update-lowercase', authenticateToken, requireAdmin, (req, res) =>
+  serviceOrderController.updateAllServiceOrdersHandler(req, res)
+);
 
 export default router;
 

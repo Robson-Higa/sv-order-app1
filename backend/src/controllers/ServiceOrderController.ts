@@ -42,12 +42,15 @@ export class ServiceOrderController {
       if (technicianId) query = query.where('technicianId', '==', technicianId);
       if (establishmentId) query = query.where('establishmentId', '==', establishmentId);
 
-      // Controle de escopo
-      if (scope === 'mine') {
-        query = query.where('userId', '==', user.uid);
-      } else if (scope === 'establishment') {
-        query = query.where('establishmentId', '==', user.establishmentId);
-      }
+    if (scope === 'mine') {
+  if (user.userType === UserType.TECHNICIAN) {
+    query = query.where('technicianId', '==', user.uid);
+  } else {
+    query = query.where('userId', '==', user.uid);
+  }
+} else if (scope === 'establishment') {
+  query = query.where('establishmentId', '==', user.establishmentId);
+}
 
       // Segurança adicional para END_USER
       if (user.userType === UserType.END_USER) {
@@ -125,7 +128,7 @@ export class ServiceOrderController {
 
   async createServiceOrder(req: AuthRequest, res: Response) {
     try {
-      const { title, description, priority, establishmentName, technicianName, scheduledAt } = req.body;
+      const { title, description, priority, establishmentName, sector, technicianName, scheduledAt } = req.body;
 
       // Validação dos campos obrigatórios
       if (!title || !description || !establishmentName || !priority) {
@@ -173,14 +176,18 @@ export class ServiceOrderController {
       const userId = req.user?.uid || '';
       const userName = req.user?.name || '';
 
+      const normalizedStatus = ServiceOrderStatus.OPEN.toLowerCase();
+const normalizedPriority = priority.toLowerCase();
+
       const newServiceOrder: Record<string, any> = {
         id: serviceOrderId,
         orderNumber,
         title,
         description,
-        priority,
+        priority: normalizedPriority,
         establishmentId,
         establishmentName,
+         sector: sector || null, // ✅ adicionando setor
         userId,
         userName,
         status: ServiceOrderStatus.OPEN,
@@ -314,63 +321,92 @@ async assignSelfToOrder(req: AuthRequest, res: Response) {
   }
 }
 
+async getMonthlyServiceOrderStats(req: AuthRequest, res: Response) {
+  try {
+    const user = req.user;
+    if (!user) return res.status(401).json({ error: 'Não autenticado' });
 
-  async getMonthlyServiceOrderStats(req: AuthRequest, res: Response) {
-    try {
-      const user = req.user;
-      if (!user) return res.status(401).json({ error: 'Não autenticado' });
+   let { establishmentId, technicianId } = req.query as {
+  establishmentId?: string;
+  technicianId?: string;
+};
 
-      const { establishmentId } = req.query;
-      let filterEstablishmentId = establishmentId as string | null | undefined;
+// Usuário final só pode ver seu próprio estabelecimento
+if (user.userType === UserType.END_USER) {
+  establishmentId = user.establishmentId ?? undefined; // garante que não vira null
+  technicianId = undefined; // bloqueia filtro por técnico
+}
 
-      // END_USER só vê dados do próprio estabelecimento
-      if (user.userType === UserType.END_USER) {
-        filterEstablishmentId = user.establishmentId;
-      }
 
-      // Criar array dos últimos 12 meses (do mais antigo para o mais recente)
-      const months = Array.from({ length: 12 }, (_, i) =>
-        dayjs().subtract(i, 'month').startOf('month')
-      ).reverse();
-
-      // Inicializar estatísticas mensais
-      const stats = months.map((m) => ({
-        month: m.format('MMM'), // Ex: 'Jan', 'Fev'
-        open: 0,
-        completed: 0,
-        cancelled: 0
-      }));
-
-      // Query com filtro por estabelecimento (se aplicável)
-      let query: FirebaseFirestore.Query = db.collection('serviceOrders');
-      if (filterEstablishmentId) query = query.where('establishmentId', '==', filterEstablishmentId);
-
-      const snap = await query.get();
-
-      snap.forEach((doc) => {
-        const d = doc.data();
-        if (!d.createdAt) return;
-
-        const createdAt = dayjs(d.createdAt.toDate());
-        const index = stats.findIndex((m) => m.month === createdAt.format('MMM'));
-        if (index >= 0) {
-          if (['open', 'assigned', 'in_progress'].includes(d.status)) stats[index].open++;
-          else if (['completed', 'confirmed'].includes(d.status)) stats[index].completed++;
-          else if (d.status === 'cancelled') stats[index].cancelled++;
-        }
-      });
-
-      return res.json({ data: stats });
-    } catch (err) {
-      console.error('Erro no gráfico mensal:', err);
-      return res.status(500).json({ error: 'Erro ao gerar estatísticas' });
+    // Técnico só pode ver suas próprias estatísticas (ignorar technicianId da query)
+    else if (user.userType === UserType.TECHNICIAN) {
+      technicianId = user.uid;
+      // Pode permitir filtrar por estabelecimento? Em geral, não precisa
+      establishmentId = undefined; // Opcional
     }
+
+    // Admin e outros tipos podem filtrar por técnico e estabelecimento (sem restrição)
+    // Aqui não altera nada, aceita os parâmetros da query normalmente
+
+    // Montar query no Firestore
+    let query: FirebaseFirestore.Query = db.collection('serviceOrders');
+
+    if (establishmentId) {
+      query = query.where('establishmentId', '==', establishmentId);
+    }
+    if (technicianId) {
+      query = query.where('technicianId', '==', technicianId);
+    }
+
+    // Criar array dos últimos 12 meses (do mais antigo para o mais recente)
+    const months = Array.from({ length: 12 }, (_, i) =>
+      dayjs().subtract(i, 'month').startOf('month')
+    ).reverse();
+
+    const stats = months.map((m) => ({
+      month: m.format('MMM'),
+      open: 0,
+      assigned: 0,
+      in_progress: 0,
+      completed: 0,
+      cancelled: 0,
+    }));
+
+    const snap = await query.get();
+
+    snap.forEach((doc) => {
+      const d = doc.data();
+      if (!d.createdAt) return;
+
+      const createdAt = dayjs(d.createdAt.toDate());
+      const index = stats.findIndex((m) => m.month === createdAt.format('MMM'));
+      if (index < 0) return;
+
+      const status = d.status.toLowerCase();
+
+      if (['open', 'assigned', 'in_progress'].includes(status)) {
+        if (status === 'assigned') stats[index].assigned++;
+        else if (status === 'in_progress') stats[index].in_progress++;
+        else stats[index].open++;
+      } else if (['completed', 'confirmed'].includes(status)) {
+        stats[index].completed++;
+      } else if (status === 'cancelled') {
+        stats[index].cancelled++;
+      }
+    });
+
+    return res.json({ data: stats });
+  } catch (err) {
+    console.error('Erro no gráfico mensal:', err);
+    return res.status(500).json({ error: 'Erro ao gerar estatísticas' });
   }
+}
 
  async updateServiceOrder(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
     const updateData: UpdateServiceOrderRequest = req.body;
+    
 
     const serviceOrderDoc = await db.collection('serviceOrders').doc(id);
     const serviceOrderSnapshot = await serviceOrderDoc.get();
@@ -522,67 +558,132 @@ async assignSelfToOrder(req: AuthRequest, res: Response) {
     }
   }
 
-  async getServiceOrderStats(req: AuthRequest, res: Response) {
-    try {
-      console.log('--- getServiceOrderStats called ---');
-      console.log('User:', req.user);
-      console.log('Query params:', req.query);
+ async getServiceOrderStats(req: AuthRequest, res: Response) {
+  try {
+    console.log('--- getServiceOrderStats called ---');
+    const { technicianId, establishmentId } = req.query;
+    const user = req.user;
 
-      const { establishmentId } = req.query;
-      const user = req.user;
-
-      if (!user) {
-        console.log('Usuário não autenticado');
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-      }
-
-      let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = db.collection('serviceOrders');
-
-      if (establishmentId) {
-        console.log(`Filtrando ordens pelo establishmentId: ${establishmentId}`);
-        query = query.where('establishmentId', '==', establishmentId);
-      } else {
-        console.log(`Sem establishmentId. Aplicando filtro padrão para userType: ${user.userType}`);
-        if (user.userType === 'admin') {
-          // Admin vê tudo (sem filtro)
-          console.log('Usuário admin - sem filtro de ordens');
-        } else if (user.userType === 'technician') {
-          console.log(`Usuário técnico - filtrando ordens do technicianId: ${user.uid}`);
-          query = query.where('technicianId', '==', user.uid);
-        } else {
-          console.log(`Usuário final - filtrando ordens do userId: ${user.uid}`);
-          query = query.where('userId', '==', user.uid);
-        }
-      }
-
-      const snapshot = await query.get();
-      console.log(`Total de ordens encontradas: ${snapshot.size}`);
-
-      const stats = {
-        total: 0,
-        open: 0,
-        assigned: 0,
-        inProgress: 0,
-        completed: 0,
-        confirmed: 0,
-        cancelled: 0
-      };
-
-      snapshot.forEach((doc) => {
-        const order = doc.data();
-        console.log(`Ordem: ${doc.id} - Status: ${order.status}`);
-        stats.total++;
-        if (stats[order.status as keyof typeof stats] !== undefined) {
-          stats[order.status as keyof typeof stats]++;
-        }
-      });
-
-      console.log('Estatísticas finais:', stats);
-
-      return res.json({ stats });
-    } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
-      return res.status(500).json({ error: 'Erro ao buscar estatísticas de ordens de serviço' });
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
     }
+
+    let query: FirebaseFirestore.Query = db.collection('serviceOrders');
+
+    if (establishmentId) {
+      query = query.where('establishmentId', '==', establishmentId);
+    } else {
+      if (user.userType === UserType.TECHNICIAN) {
+        query = query.where('technicianId', '==', user.uid);
+      } else if (user.userType === UserType.END_USER) {
+        query = query.where('userId', '==', user.uid);
+      }
+    }
+
+    const snapshot = await query.get();
+
+    const stats: Record<string, number> = {
+      total: 0,
+      open: 0,
+      assigned: 0,
+      in_progress: 0,
+      completed: 0,
+      confirmed: 0,
+      cancelled: 0
+    };
+
+    snapshot.forEach((doc) => {
+      const order = doc.data();
+      const statusKey = (order.status || '').toLowerCase();
+      stats.total++;
+      if (statusKey && stats.hasOwnProperty(statusKey)) {
+        stats[statusKey]++;
+      }
+    });
+
+    return res.json({ stats });
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas:', error);
+    return res.status(500).json({ error: 'Erro ao buscar estatísticas de ordens de serviço' });
   }
+}
+async getMonthlyStats(req: AuthRequest, res: Response) {
+  try {
+    console.log('--- getMonthlyStats called ---');
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    }
+
+    // Últimos 12 meses
+    const now = new Date();
+    const months: { month: string; assigned: number; in_progress: number; completed: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = date.toLocaleString('pt-BR', { month: 'short' });
+      months.push({ month: monthName, assigned: 0, in_progress: 0, completed: 0 });
+    }
+
+    let query: FirebaseFirestore.Query = db.collection('serviceOrders');
+
+    if (user.userType === UserType.TECHNICIAN) {
+      query = query.where('technicianId', '==', user.uid);
+    } else if (user.userType === UserType.END_USER) {
+      query = query.where('userId', '==', user.uid);
+    }
+
+    const snapshot = await query.get();
+
+    snapshot.forEach((doc) => {
+      const order = doc.data();
+      const createdAt = order.createdAt?.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+      const status = (order.status || '').toLowerCase();
+      const monthIndex = months.findIndex(m => m.month === createdAt.toLocaleString('pt-BR', { month: 'short' }));
+      
+      if (monthIndex !== -1) {
+        if (status === 'assigned') months[monthIndex].assigned++;
+        if (status === 'in_progress') months[monthIndex].in_progress++;
+        if (status === 'completed') months[monthIndex].completed++;
+      }
+    });
+
+    return res.json({ monthlyData: months });
+  } catch (error) {
+    console.error('Erro ao buscar estatísticas mensais:', error);
+    return res.status(500).json({ error: 'Erro ao buscar estatísticas mensais' });
+  }
+}
+
+async updateAllServiceOrdersHandler(req: Request, res: Response) {
+  try {
+    const snapshot = await db.collection('serviceOrders').get();
+    const batch = db.batch();
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const updatedData: any = {};
+
+      // Campos a padronizar
+      if (data.status) updatedData.status = data.status.toLowerCase();
+      if (data.priority) updatedData.priority = data.priority.toLowerCase();
+      if (data.title) updatedData.title = data.title.toLowerCase();
+      if (data.description) updatedData.description = data.description.toLowerCase();
+      if (data.establishmentName) updatedData.establishmentName = data.establishmentName.toLowerCase();
+      if (data.technicianName) updatedData.technicianName = data.technicianName.toLowerCase();
+      if (data.userName) updatedData.userName = data.userName.toLowerCase();
+
+      batch.update(doc.ref, updatedData);
+    });
+
+    await batch.commit();
+    return res.json({ message: `Atualizados ${snapshot.size} documentos para lowercase` });
+  } catch (error) {
+    console.error('Erro ao atualizar ordens:', error);
+    return res.status(500).json({ error: 'Erro interno ao atualizar registros' });
+  }
+}
+
+
+
 }

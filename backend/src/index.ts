@@ -14,13 +14,15 @@ import tokenRoutes from './routes/auth'
 import reportRoutes from './routes/report'
 import titleRoutes from './routes/titles';
 import sectorRoutes from './routes/sectors';
-
+import { ServiceOrderController } from './controllers/ServiceOrderController';
 import path from 'path';
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+
+const serviceOrderController = new ServiceOrderController();
 
 app.use(
   helmet({
@@ -110,6 +112,9 @@ app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
+
+//app.post('/api/service-orders/update-lowercase', serviceOrderController.updateAllServiceOrdersHandler);
+
 
 // Iniciar servidor
 app.listen(PORT, '0.0.0.0', () => {
