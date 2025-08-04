@@ -157,4 +157,56 @@ export class ReportController {
       return res.status(500).json({ message: 'Erro ao gerar relatório mensal' });
     }
   }
+
+   async getOrdersReport(req: Request, res: Response) {
+    try {
+      const { startDate, endDate, technicianId, establishmentId } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Os parâmetros startDate e endDate são obrigatórios.' });
+      }
+
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+
+      console.log('📌 [ReportController] Filtros:', { startDate, endDate, technicianId, establishmentId });
+
+      let query: FirebaseFirestore.Query = db.collection('serviceOrders')
+        .where('createdAt', '>=', start)
+        .where('createdAt', '<=', end);
+
+      if (technicianId) query = query.where('technicianId', '==', technicianId);
+      if (establishmentId) query = query.where('establishmentId', '==', establishmentId);
+
+      const snapshot = await query.orderBy('createdAt', 'asc').get();
+
+      console.log(`📌 Total de ordens encontradas: ${snapshot.size}`);
+
+      const orders = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          orderNumber: data.orderNumber || '',
+          title: data.title || '',
+          description: data.description || '',
+          status: data.status || '',
+          priority: data.priority || '',
+          technicianName: data.technicianName || '',
+          establishmentName: data.establishmentName || '',
+          createdAt: data.createdAt ? data.createdAt.toDate().toLocaleString('pt-BR') : '',
+          updatedAt: data.updatedAt ? data.updatedAt.toDate().toLocaleString('pt-BR') : '',
+          solution: data.solution || '',
+          feedback: data.feedback || '',
+          cancelReason: data.cancelReason || '',
+          userName: data.userName || ''
+        };
+      });
+
+      return res.json({ orders });
+    } catch (error) {
+      console.error('❌ Erro ao gerar relatório:', error);
+      return res.status(500).json({ error: 'Erro ao gerar relatório' });
+    }
+  }
 }

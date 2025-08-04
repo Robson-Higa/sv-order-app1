@@ -306,6 +306,7 @@ async assignSelfToOrder(req: AuthRequest, res: Response) {
 
     await serviceOrderDoc.update({
       technicianId: user.uid,
+      technicianName: user.name || '', // <-- Agora salva o nome
       updatedAt: new Date(),
     });
 
@@ -320,6 +321,7 @@ async assignSelfToOrder(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
+
 
 async getMonthlyServiceOrderStats(req: AuthRequest, res: Response) {
   try {

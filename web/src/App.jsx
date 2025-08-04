@@ -11,6 +11,7 @@ import UsersAdminPage from './pages/UsersAdminPage';
 import EstablishmentsPage from './pages/EstablishmentsPage';
 import ReportsPage from './pages/ReportsPage';
 import ProfilePage from './pages/profilePage';
+import DetailedReportPage from '@/pages/DetailedReportPage';
 
 import './App.css';
 import { Toaster } from 'react-hot-toast';
@@ -146,6 +147,8 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
+      <Route path="/relatorios/detalhado" element={<DetailedReportPage />} />
 
       {/* Redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

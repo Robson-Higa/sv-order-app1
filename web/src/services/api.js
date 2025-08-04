@@ -133,6 +133,7 @@ export const apiService = {
   getOrdersByEstablishment: (params) => api.get('/reports/by-establishment', { params }),
   getOrdersByTechnician: (params) => api.get('/reports/by-technician', { params }),
 
+  getOrdersReport: (params) => api.get('/reports/orders-report', { params }),
   /** ===================== USUÁRIO ATUAL ===================== **/
   getCurrentUser: () => api.get('/users/me'),
 };
