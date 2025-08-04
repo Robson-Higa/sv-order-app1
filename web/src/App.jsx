@@ -16,38 +16,9 @@ import DetailedReportPage from '@/pages/DetailedReportPage';
 import './App.css';
 import { Toaster } from 'react-hot-toast';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
-
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
-};
-
 const AppRoutes = () => {
-  const { loading } = useAuth();
+  const { loading, isAuthenticated } = useAuth();
 
-  // ✅ Aguarda carregar para evitar que login apareça junto com dashboard
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -56,109 +27,39 @@ const AppRoutes = () => {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
+
+  // Usuário está autenticado, renderiza layout e rotas internas
   return (
-    <Routes>
-      {/* Public */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        }
-      />
+    <Layout>
+      <Routes>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/service-orders" element={<ServiceOrdersPage />} />
+        <Route path="/service-orders/new" element={<ServiceOrderCreatePage />} />
+        <Route path="/users" element={<UsersAdminPage />} />
+        <Route path="/establishments" element={<EstablishmentsPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/relatorios/detalhado" element={<DetailedReportPage />} />
 
-      {/* Protected */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <DashboardPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/service-orders"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ServiceOrdersPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/service-orders/new"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ServiceOrderCreatePage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/users"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <UsersAdminPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/establishments"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <EstablishmentsPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/reports"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ReportsPage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <ProfilePage />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
+        {/* Redirect padrão */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-      <Route path="/relatorios/detalhado" element={<DetailedReportPage />} />
-
-      {/* Redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-      {/* 404 */}
-      <Route
-        path="*"
-        element={<div className="text-center p-10">404 - Página não encontrada</div>}
-      />
-    </Routes>
+        {/* 404 */}
+        <Route
+          path="*"
+          element={<div className="text-center p-10">404 - Página não encontrada</div>}
+        />
+      </Routes>
+    </Layout>
   );
 };
 
@@ -172,5 +73,4 @@ function App() {
     </AuthProvider>
   );
 }
-
 export default App;

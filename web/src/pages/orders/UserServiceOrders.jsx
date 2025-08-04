@@ -61,15 +61,17 @@ const UserServiceOrders = () => {
       setLoading(true);
       const response = await apiService.getServiceOrders({ scope: 'mine', limit: 10 });
       if (response?.serviceOrders) {
-        const sortedOrders = [...response.serviceOrders].sort((a, b) => {
-          const dateA = a.createdAt._seconds
-            ? a.createdAt._seconds
-            : new Date(a.createdAt).getTime() / 1000;
-          const dateB = b.createdAt._seconds
-            ? b.createdAt._seconds
-            : new Date(b.createdAt).getTime() / 1000;
-          return dateB - dateA; // Mais recentes primeiro
+        const processedOrders = response.serviceOrders.map((order) => {
+          let timestamp = 0;
+          if (order.createdAt?._seconds) {
+            timestamp = order.createdAt._seconds * 1000;
+          } else if (typeof order.createdAt === 'string' || order.createdAt instanceof Date) {
+            timestamp = new Date(order.createdAt).getTime();
+          }
+          return { ...order, createdAtMs: timestamp };
         });
+
+        const sortedOrders = processedOrders.sort((a, b) => b.createdAtMs - a.createdAtMs);
         setOrders(sortedOrders);
       }
     } catch (error) {

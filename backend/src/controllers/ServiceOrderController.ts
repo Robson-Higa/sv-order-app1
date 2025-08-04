@@ -18,45 +18,87 @@ dayjs.locale('pt-br');
 
 export class ServiceOrderController {
   async getAllServiceOrders(req: AuthRequest, res: Response) {
-  try {
-    const { status, priority, technicianId, establishmentId, title } = req.query;
-    const user = req.user;
+    try {
+      const { status, priority, technicianId, establishmentId, scope, title } = req.query;
+      const user = req.user;
 
-    if (!user) {
-      return res.status(401).json({ error: 'Usuário não autenticado' });
+      if (!user) {
+        return res.status(401).json({ error: 'Usuário não autenticado' });
+      }
+
+      console.log('📌 [ServiceOrders] Requisição recebida');
+      console.log('➡ Filtros recebidos:', { status, priority, technicianId, establishmentId, scope });
+      console.log('➡ Usuário autenticado:', {
+        uid: user.uid,
+        userType: user.userType,
+        establishmentId: user.establishmentId,
+        name: user.name
+      });
+
+      let query: FirebaseFirestore.Query = db.collection('serviceOrders');
+
+      // Filtros dinâmicos
+      if (status) query = query.where('status', '==', status);
+      if (priority) query = query.where('priority', '==', priority);
+      if (technicianId) query = query.where('technicianId', '==', technicianId);
+      if (establishmentId) query = query.where('establishmentId', '==', establishmentId);
+
+    if (scope === 'mine') {
+  if (user.userType === UserType.TECHNICIAN) {
+    query = query.where('technicianId', '==', user.uid);
+  } else {
+    query = query.where('userId', '==', user.uid);
+  }
+} else if (scope === 'establishment') {
+  query = query.where('establishmentId', '==', user.establishmentId);
+}
+
+      // Segurança adicional para END_USER
+      if (user.userType === UserType.END_USER) {
+        if (scope === 'mine') {
+          query = query.where('userId', '==', user.uid);
+        } else {
+          query = query.where('establishmentId', '==', user.establishmentId);
+        }
+      }
+
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+      query = query.limit(limit);
+
+      console.log('📌 Executando query no Firestore...');
+      const ordersSnap = await query.get();
+
+      console.log(`📌 Total de ordens encontradas: ${ordersSnap.size}`);
+
+       query = query.orderBy('createdAt', 'desc');
+   const resultLimit = typeof limit === 'string' ? parseInt(limit, 10) : 100;
+
+    query = query.limit(resultLimit);
+
+     const snapshot = await query.get();
+
+    let orders: ServiceOrder[] = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...(doc.data() as Omit<ServiceOrder, 'id'>),
+    }));
+
+    
+
+    // ✅ Filtro por título (em memória)
+    if (title && typeof title === 'string') {
+      const lowerTitle = title.toLowerCase().trim();
+      orders = orders.filter(order =>
+        order.title && order.title.toLowerCase().includes(lowerTitle)
+      );
     }
 
-    let query: FirebaseFirestore.Query = db.collection('serviceOrders');
 
-    // Filtros normais
-    if (status) query = query.where('status', '==', status);
-    if (priority) query = query.where('priority', '==', priority);
-    if (technicianId) query = query.where('technicianId', '==', technicianId);
-    if (establishmentId) query = query.where('establishmentId', '==', establishmentId);
-
-    // Limite para evitar trazer tudo
-    query = query.limit(100);
-
-    const snapshot = await query.get();
-
-let orders: ServiceOrder[] = snapshot.docs.map(doc => ({
-  id: doc.id,
-  ...(doc.data() as Omit<ServiceOrder, 'id'>),
-}));
-
-   if (title && typeof title === 'string') {
-  const lowerTitle = title.toLowerCase().trim();
-  orders = orders.filter(order =>
-    order.title && order.title.toLowerCase().includes(lowerTitle)
-  );
-}
-    return res.status(200).json({ serviceOrders: orders });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'Erro ao buscar ordens' });
+      return res.status(200).json({ serviceOrders: orders });
+    } catch (error) {
+      console.error('❌ Erro ao buscar ordens:', error);
+      return res.status(500).json({ error: 'Erro ao buscar ordens' });
+    }
   }
-}
-
 
  async getServiceOrderById(req: AuthRequest, res: Response) {
   try {
