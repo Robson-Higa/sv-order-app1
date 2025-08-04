@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import TextField from '@mui/material/TextField';
 import Autocomplete from '@mui/material/Autocomplete';
+import { apiService } from '../../services/api';
 
 const priorities = [
   { value: 'LOW', label: 'Baixa' },
@@ -11,7 +12,7 @@ const priorities = [
 ];
 
 const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
   const [title, setTitle] = useState(defaultValues.title || '');
   const [description, setDescription] = useState(defaultValues.description || '');
@@ -21,98 +22,89 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
   const [sector, setSector] = useState(defaultValues.sector || '');
   const today = new Date().toISOString().split('T')[0];
   const [scheduledAt, setScheduledAt] = useState(defaultValues.scheduledAt || today);
+
   const [establishments, setEstablishments] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [titles, setTitles] = useState([]);
   const [sectors, setSectors] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [loadingSelects, setLoadingSelects] = useState(false);
   const [error, setError] = useState({});
   const firstFieldRef = useRef(null);
 
-  // Foco no primeiro campo
+  /** Foco no primeiro campo */
   useEffect(() => {
     if (firstFieldRef.current) firstFieldRef.current.focus();
   }, []);
 
-  // Preenche estabelecimento para END_USER
-  useEffect(() => {
-    async function fetchEstablishmentName() {
-      if (user?.userType?.toLowerCase() === 'end_user' && user.establishmentId) {
-        try {
-          const headers = { Authorization: `Bearer ${token}` };
-          const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-          const res = await fetch(`${baseURL}/api/establishments/${user.establishmentId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (!res.ok) throw new Error('Erro ao buscar estabelecimento');
-
-          const data = await res.json();
-          setEstablishmentName(data.name || '');
-
-          // Agora busca os setores desse estabelecimento
-          fetchSectorsByEstablishment(user.establishmentId);
-        } catch (err) {
-          console.error('Erro ao buscar nome do estabelecimento:', err);
-        }
-      }
-    }
-
-    fetchEstablishmentName();
-  }, [user, token]);
-
-  // Carregar listas para ADMIN
-  // Buscar títulos (para todos os usuários)
+  /** Buscar títulos para todos os usuários */
   useEffect(() => {
     async function fetchTitles() {
       try {
-        const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        const res = await fetch(`${baseURL}/api/titles`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setTitles(data.titles || []);
+        const res = await apiService.getTitles();
+        setTitles(res.titles || []);
       } catch (err) {
         console.error('Erro ao buscar títulos:', err);
       }
     }
     fetchTitles();
-  }, [token]);
+  }, []);
 
-  // Buscar dados para ADMIN
+  /** Preenche estabelecimento para END_USER e busca setores */
   useEffect(() => {
-    async function fetchData() {
-      if (user?.userType?.toLowerCase() === 'admin') {
-        setLoadingSelects(true);
-        try {
-          const headers = { Authorization: `Bearer ${token}` };
-          const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-          const resEstablishments = await fetch(`${baseURL}/api/establishments`, { headers });
-          const dataEstablishments = await resEstablishments.json();
-          setEstablishments(dataEstablishments.establishments || []);
-
-          const resTechnicians = await fetch(`${baseURL}/api/users/technicians`, { headers });
-          const dataTechnicians = await resTechnicians.json();
-          setTechnicians(dataTechnicians.technicians || []);
-
-          // const resSectors = await fetch(`${baseURL}/api/sectors`, { headers });
-          // const dataSectors = await resSectors.json();
-          // setSectors(dataSectors.sectors || []);
-        } catch (err) {
-          console.error('Erro ao carregar listas:', err);
-        } finally {
-          setLoadingSelects(false);
-        }
-      }
+    if (user?.userType?.toLowerCase() === 'end_user' && user.establishmentId) {
+      fetchEstablishmentAndSectors(user.establishmentId);
     }
-    fetchData();
-  }, [user, token]);
+  }, [user]);
 
+  const fetchEstablishmentAndSectors = async (establishmentId) => {
+    try {
+      const establishment = await apiService.getEstablishments();
+      const current = establishment.establishments.find((e) => e.id === establishmentId);
+      if (current) {
+        setEstablishmentName(current.name);
+        await fetchSectorsByEstablishment(establishmentId);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar nome do estabelecimento:', err);
+    }
+  };
+
+  /** Buscar dados para ADMIN (estabelecimentos, técnicos) */
+  useEffect(() => {
+    if (user?.userType?.toLowerCase() === 'admin') {
+      loadAdminData();
+    }
+  }, [user]);
+
+  const loadAdminData = async () => {
+    setLoadingSelects(true);
+    try {
+      const [estResp, techResp] = await Promise.all([
+        apiService.getEstablishments(),
+        apiService.getTechnicians(),
+      ]);
+      setEstablishments(estResp.establishments || []);
+      setTechnicians(techResp.technicians || []);
+    } catch (err) {
+      console.error('Erro ao carregar listas:', err);
+    } finally {
+      setLoadingSelects(false);
+    }
+  };
+
+  const fetchSectorsByEstablishment = async (establishmentId) => {
+    try {
+      const res = await apiService.getSectors(establishmentId);
+      setSectors(res.sectors || []);
+    } catch (err) {
+      console.error('Erro ao buscar setores:', err);
+      setSectors([]);
+    }
+  };
+
+  /** Validação */
   const validateForm = () => {
     const errors = {};
     if (!title.trim()) errors.title = 'O título é obrigatório.';
@@ -122,37 +114,27 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
     return Object.keys(errors).length === 0;
   };
 
+  /** Submit */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     setLoading(true);
     try {
-      const selectedTechnician = technicians.find((t) => t.id === technicianId);
-
       const payload = {
         title: title.trim(),
         description: description.trim(),
         priority,
         establishmentName,
-        sector, // ✅ adicionando setor
+        sector,
         ...(scheduledAt && { scheduledAt }),
+        ...(technicianId && { technicianId }),
       };
 
-      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${baseURL}/api/service-orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) throw new Error('Erro ao criar ordem');
+      await apiService.createServiceOrder(payload);
 
       toast.success('Ordem criada com sucesso!');
-      if (onSuccess) onSuccess(); // ✅ Fechar modal ou redirecionar
+      if (onSuccess) onSuccess();
     } catch (err) {
       console.error('Erro:', err);
       toast.error('Erro ao criar ordem.');
@@ -161,37 +143,28 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
     }
   };
 
-  const fetchSectorsByEstablishment = async (establishmentId) => {
-    try {
-      const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const res = await fetch(`${baseURL}/api/establishments/${establishmentId}/sectors`, {
-        headers,
-      });
-
-      if (!res.ok) throw new Error('Erro ao buscar setores');
-      const data = await res.json();
-      setSectors(data.sectors || []);
-    } catch (err) {
-      console.error('Erro ao buscar setores:', err);
-      setSectors([]);
-    }
-  };
-
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Título com Autocomplete */}
+      {/* Título */}
       <div>
         <label className="block font-medium mb-1">Título *</label>
         <Autocomplete
           options={titles}
           getOptionLabel={(option) => option.title || ''}
           value={titles.find((t) => t.title === title) || null}
-          onChange={(_, newValue) => setTitle(newValue ? newValue.title : '')}
+          onChange={(_, newValue) => {
+            if (typeof newValue === 'string') {
+              setTitle(newValue);
+            } else if (newValue && newValue.title) {
+              setTitle(newValue.title);
+            } else {
+              setTitle('');
+            }
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
+              inputRef={firstFieldRef} // <-- aqui
               placeholder="Selecione ou digite o título"
               variant="outlined"
               size="small"
@@ -200,7 +173,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
             />
           )}
           disabled={loading}
-          freeSolo // permite digitar livremente, se desejar
+          freeSolo
         />
       </div>
 
@@ -225,7 +198,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
           onChange={(e) => setScheduledAt(e.target.value)}
           className="border rounded w-full p-2"
           disabled={loading}
-          min={today} // Impede datas passadas
+          min={today}
         />
       </div>
 
@@ -245,6 +218,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
           ))}
         </select>
       </div>
+
       {/* Estabelecimento */}
       <div>
         <label className="block font-medium">Estabelecimento *</label>
@@ -261,13 +235,10 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
             onChange={(e) => {
               const selectedName = e.target.value;
               setEstablishmentName(selectedName);
-              setSector(''); // resetar setor
+              setSector('');
               const selectedEst = establishments.find((est) => est.name === selectedName);
-              if (selectedEst) {
-                fetchSectorsByEstablishment(selectedEst.id);
-              } else {
-                setSectors([]);
-              }
+              if (selectedEst) fetchSectorsByEstablishment(selectedEst.id);
+              else setSectors([]);
             }}
             disabled={loading || loadingSelects}
           >
@@ -283,7 +254,8 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
           <p className="text-red-500 text-sm">{error.establishmentName}</p>
         )}
       </div>
-      {/* Setor com Autocomplete */}
+
+      {/* Setor */}
       <div>
         <label className="block font-medium mb-1">Setor *</label>
         <Autocomplete
@@ -303,7 +275,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
         />
       </div>
 
-      {/* Técnico */}
+      {/* Técnico (somente admin) */}
       {user?.userType?.toLowerCase() === 'admin' && (
         <div>
           <label className="block font-medium">Técnico</label>

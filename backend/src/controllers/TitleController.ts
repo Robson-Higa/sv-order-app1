@@ -54,4 +54,5 @@ export class TitleController {
       res.status(500).json({ error: "Erro ao deletar título" });
     }
   }
+  
 }

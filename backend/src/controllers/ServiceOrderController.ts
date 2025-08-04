@@ -12,74 +12,51 @@ import {
 import { generateId, generateOrderNumber } from '../utils/helpers';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
+import whatsappService from '../services/whatsappService';
 
 dayjs.locale('pt-br');
 
 export class ServiceOrderController {
   async getAllServiceOrders(req: AuthRequest, res: Response) {
-    try {
-      const { status, priority, technicianId, establishmentId, scope } = req.query;
-      const user = req.user;
+  try {
+    const { status, priority, technicianId, establishmentId, title } = req.query;
+    const user = req.user;
 
-      if (!user) {
-        return res.status(401).json({ error: 'Usuário não autenticado' });
-      }
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não autenticado' });
+    }
 
-      console.log('📌 [ServiceOrders] Requisição recebida');
-      console.log('➡ Filtros recebidos:', { status, priority, technicianId, establishmentId, scope });
-      console.log('➡ Usuário autenticado:', {
-        uid: user.uid,
-        userType: user.userType,
-        establishmentId: user.establishmentId,
-        name: user.name
-      });
+    let query: FirebaseFirestore.Query = db.collection('serviceOrders');
 
-      let query: FirebaseFirestore.Query = db.collection('serviceOrders');
+    // Filtros normais
+    if (status) query = query.where('status', '==', status);
+    if (priority) query = query.where('priority', '==', priority);
+    if (technicianId) query = query.where('technicianId', '==', technicianId);
+    if (establishmentId) query = query.where('establishmentId', '==', establishmentId);
 
-      // Filtros dinâmicos
-      if (status) query = query.where('status', '==', status);
-      if (priority) query = query.where('priority', '==', priority);
-      if (technicianId) query = query.where('technicianId', '==', technicianId);
-      if (establishmentId) query = query.where('establishmentId', '==', establishmentId);
+    // Limite para evitar trazer tudo
+    query = query.limit(100);
 
-    if (scope === 'mine') {
-  if (user.userType === UserType.TECHNICIAN) {
-    query = query.where('technicianId', '==', user.uid);
-  } else {
-    query = query.where('userId', '==', user.uid);
+    const snapshot = await query.get();
+
+let orders: ServiceOrder[] = snapshot.docs.map(doc => ({
+  id: doc.id,
+  ...(doc.data() as Omit<ServiceOrder, 'id'>),
+}));
+
+   if (title && typeof title === 'string') {
+  const lowerTitle = title.toLowerCase().trim();
+  orders = orders.filter(order =>
+    order.title && order.title.toLowerCase().includes(lowerTitle)
+  );
+}
+    return res.status(200).json({ serviceOrders: orders });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Erro ao buscar ordens' });
   }
-} else if (scope === 'establishment') {
-  query = query.where('establishmentId', '==', user.establishmentId);
 }
 
-      // Segurança adicional para END_USER
-      if (user.userType === UserType.END_USER) {
-        if (scope === 'mine') {
-          query = query.where('userId', '==', user.uid);
-        } else {
-          query = query.where('establishmentId', '==', user.establishmentId);
-        }
-      }
-
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-      query = query.limit(limit);
-
-      console.log('📌 Executando query no Firestore...');
-      const ordersSnap = await query.get();
-
-      console.log(`📌 Total de ordens encontradas: ${ordersSnap.size}`);
-
-      const orders = ordersSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      return res.status(200).json({ serviceOrders: orders });
-    } catch (error) {
-      console.error('❌ Erro ao buscar ordens:', error);
-      return res.status(500).json({ error: 'Erro ao buscar ordens' });
-    }
-  }
 
  async getServiceOrderById(req: AuthRequest, res: Response) {
   try {
@@ -203,6 +180,21 @@ const normalizedPriority = priority.toLowerCase();
 
       await db.collection('serviceOrders').doc(serviceOrderId).set(newServiceOrder);
 
+      // Buscar o telefone do usuário para enviar notificação via WhatsApp
+      try {
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          if (userData?.phone) {
+            // Enviar notificação via WhatsApp
+            await whatsappService.notifyOrderCreation(newServiceOrder as ServiceOrder, userData.phone);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao enviar notificação WhatsApp:', error);
+        // Não interrompe o fluxo se a notificação falhar
+      }
+
       return res.status(201).json({
         message: 'Ordem de serviço criada com sucesso',
         serviceOrder: newServiceOrder
@@ -262,6 +254,34 @@ const normalizedPriority = priority.toLowerCase();
     }
 
     await serviceOrderDoc.update(updates);
+
+    // Buscar o telefone do usuário para enviar notificação via WhatsApp
+    try {
+      if (serviceOrder.userId) {
+        const userDoc = await db.collection('users').doc(serviceOrder.userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          if (userData?.phone) {
+            // Enviar notificação de atualização de status via WhatsApp
+            await whatsappService.notifyStatusUpdate(
+              { ...serviceOrder, ...updates } as ServiceOrder,
+              userData.phone
+            );
+            
+            // Se a ordem foi concluída, solicitar feedback
+            if (status === ServiceOrderStatus.COMPLETED) {
+              await whatsappService.requestFeedback(
+                { ...serviceOrder, ...updates } as ServiceOrder,
+                userData.phone
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao enviar notificação WhatsApp:', error);
+      // Não interrompe o fluxo se a notificação falhar
+    }
 
     const updatedDoc = await serviceOrderDoc.get();
 
@@ -467,6 +487,24 @@ if (user.userType === UserType.END_USER) {
 
     await serviceOrderDoc.update(updates);
 
+    // Enviar notificação via WhatsApp se houver mudança de status
+    if (updates.status && serviceOrder.userId) {
+      try {
+        const userDoc = await db.collection('users').doc(serviceOrder.userId).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          if (userData?.phone) {
+            await whatsappService.notifyStatusUpdate(
+              { ...serviceOrder, ...updates } as ServiceOrder,
+              userData.phone
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao enviar notificação WhatsApp:', error);
+      }
+    }
+
     // Buscar dados atualizados
     const updatedServiceOrderSnapshot = await serviceOrderDoc.get();
     const updatedServiceOrder = {
@@ -547,11 +585,34 @@ if (user.userType === UserType.END_USER) {
         return res.status(400).json({ error: 'Esta ordem de serviço não pode ser cancelada' });
       }
 
-      await serviceOrderDoc.update({
+      const updates = {
         status: ServiceOrderStatus.CANCELLED,
         cancellationReason: reason,
         updatedAt: new Date()
-      });
+      };
+
+      await serviceOrderDoc.update(updates);
+
+      // Buscar o telefone do usuário para enviar notificação via WhatsApp
+      try {
+        if (serviceOrder.userId) {
+          const userDoc = await db.collection('users').doc(serviceOrder.userId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData?.phone) {
+              // Enviar notificação de cancelamento via WhatsApp
+              await whatsappService.notifyCancellation(
+                { ...serviceOrder, ...updates } as ServiceOrder,
+                userData.phone,
+                reason || 'Não especificado'
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao enviar notificação WhatsApp:', error);
+        // Não interrompe o fluxo se a notificação falhar
+      }
 
       return res.json({ message: 'Ordem de serviço cancelada com sucesso' });
     } catch (error) {

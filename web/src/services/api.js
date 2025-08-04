@@ -136,6 +136,8 @@ export const apiService = {
   getOrdersReport: (params) => api.get('/reports/orders-report', { params }),
   /** ===================== USUÁRIO ATUAL ===================== **/
   getCurrentUser: () => api.get('/users/me'),
+
+  getTitles: () => api.get('/titles'),
 };
 
 /** ===================== FIRESTORE AUXILIAR ===================== **/

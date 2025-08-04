@@ -12,6 +12,8 @@ import {
 } from '../../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import {
@@ -23,7 +25,6 @@ import {
 } from '../../components/ui/select';
 import {
   Plus,
-  Search,
   Filter,
   Clock,
   Building,
@@ -52,6 +53,12 @@ const AdminServiceOrders = () => {
   const [establishmentFilter, setEstablishmentFilter] = useState('all');
   const [technicianFilter, setTechnicianFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [titles, setTitles] = useState([
+    { title: 'Título 1' },
+    { title: 'Título 2' },
+    { title: 'Título 3' },
+  ]);
+  const [title, setTitle] = useState('');
 
   // Modais
   const [modalAction, setModalAction] = useState(null); // cancel, pause, confirm
@@ -59,6 +66,7 @@ const AdminServiceOrders = () => {
 
   useEffect(() => {
     loadData();
+    loadTitles(); // carrega títulos junto
   }, []);
 
   useEffect(() => {
@@ -68,15 +76,15 @@ const AdminServiceOrders = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [ordersResp, estResp, techResp] = await Promise.all([
+      const [ordersResp, estResp, usersResp] = await Promise.all([
         apiService.getServiceOrders(),
         apiService.getEstablishments(),
-        apiService.getTechnicians(),
+        apiService.getUsers(), // pega todos os usuários
       ]);
 
       setOrders(ordersResp.serviceOrders || []);
       setEstablishments(estResp.establishments || []);
-      setTechnicians(techResp.users || []);
+      setTechnicians((usersResp.users || []).filter((u) => u.userType === 'technician'));
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -87,7 +95,7 @@ const AdminServiceOrders = () => {
   const loadOrders = async () => {
     try {
       const filters = {
-        search: searchTerm || undefined,
+        title: title.trim() || undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         priority: priorityFilter !== 'all' ? priorityFilter : undefined,
         establishmentId: establishmentFilter !== 'all' ? establishmentFilter : undefined,
@@ -98,6 +106,15 @@ const AdminServiceOrders = () => {
       setOrders(response.serviceOrders || []);
     } catch (error) {
       console.error('Erro ao buscar ordens:', error);
+    }
+  };
+
+  const loadTitles = async () => {
+    try {
+      const response = await apiService.getTitles(); // Você precisa ter esse método no apiService
+      setTitles(response.titles || []);
+    } catch (error) {
+      console.error('Erro ao carregar títulos:', error);
     }
   };
 
@@ -128,8 +145,21 @@ const AdminServiceOrders = () => {
     setRefreshing(false);
   };
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleString('pt-BR', {
+  const formatDate = (dateValue) => {
+    if (!dateValue) return 'Data indisponível';
+    let date;
+
+    if (dateValue._seconds) {
+      date = new Date(dateValue._seconds * 1000);
+    } else if (typeof dateValue.toDate === 'function') {
+      date = dateValue.toDate();
+    } else {
+      date = new Date(dateValue);
+    }
+
+    if (isNaN(date.getTime())) return 'Data inválida';
+
+    return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -137,6 +167,14 @@ const AdminServiceOrders = () => {
       minute: '2-digit',
     });
   };
+
+  useEffect(() => {
+    if (title) {
+      console.log('Título selecionado ou digitado:', title);
+      // Aqui você pode disparar uma busca, filtro ou carregar dados conforme o título
+      // ex: fetchData(title);
+    }
+  }, [title]);
 
   if (loading) {
     return <div className="text-center py-8">Carregando ordens...</div>;
@@ -167,67 +205,106 @@ const AdminServiceOrders = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Input
-            placeholder="Buscar por título..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          {/* Campo de busca */}
+          <div>
+            <label className="block mb-1 text-sm font-medium">Buscar</label>
+            <Autocomplete
+              options={titles}
+              getOptionLabel={(option) => (typeof option === 'string' ? option : option.title)}
+              value={titles.find((t) => t.title === title) || title || null}
+              onChange={(_, newValue) => {
+                let val = '';
+                if (typeof newValue === 'string') {
+                  val = newValue;
+                } else if (newValue && newValue.title) {
+                  val = newValue.title;
+                }
+                setTitle(val);
+                setSearchTerm(val); // <--- adiciona aqui para filtrar na busca
+              }}
+              freeSolo
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Selecione ou digite o título"
+                  variant="outlined"
+                  size="small"
+                />
+              )}
+            />
+          </div>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {Object.values(ServiceOrderStatus).map((status) => (
-                <SelectItem key={status} value={status}>
-                  {getStatusText(status)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Status */}
+          <div>
+            <label className="block mb-1 text-sm font-medium">Status</label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {Object.values(ServiceOrderStatus).map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {getStatusText(status)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Prioridade" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {Object.values(Priority).map((priority) => (
-                <SelectItem key={priority} value={priority}>
-                  {getPriorityText(priority)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Prioridade */}
+          <div>
+            <label className="block mb-1 text-sm font-medium">Prioridade</label>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Prioridade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {Object.values(Priority).map((priority) => (
+                  <SelectItem key={priority} value={priority}>
+                    {getPriorityText(priority)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={establishmentFilter} onValueChange={setEstablishmentFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Estabelecimento" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {establishments.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Estabelecimento */}
+          <div>
+            <label className="block mb-1 text-sm font-medium">Estabelecimento</label>
+            <Select value={establishmentFilter} onValueChange={setEstablishmentFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Estabelecimento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {establishments.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={technicianFilter} onValueChange={setTechnicianFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Técnico" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {technicians.map((t) => (
-                <SelectItem key={t.uid} value={t.uid}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Técnico */}
+          <div>
+            <label className="block mb-1 text-sm font-medium">Técnico</label>
+            <Select value={technicianFilter} onValueChange={setTechnicianFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Técnico" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {technicians.map((t) => (
+                  <SelectItem key={t.uid} value={t.uid}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardContent>
       </Card>
 
@@ -239,81 +316,91 @@ const AdminServiceOrders = () => {
           </CardContent>
         </Card>
       ) : (
-        orders.map((order) => (
-          <Card key={order.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold">{order.title}</h3>
-                  <p className="text-gray-600">{order.description}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Badge className={getStatusColor(order.status)}>
-                    {getStatusText(order.status)}
-                  </Badge>
-                  <Badge variant="outline" className={getPriorityColor(order.priority)}>
-                    {getPriorityText(order.priority)}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500 mb-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" /> {formatDate(order.createdAt)}
-                </div>
-                {order.establishment && (
-                  <div className="flex items-center gap-2">
-                    <Building className="w-4 h-4" /> {order.establishment.name}
+        [...orders]
+          .sort((a, b) => {
+            const dateA = a.createdAt?._seconds
+              ? a.createdAt._seconds * 1000
+              : new Date(a.createdAt).getTime();
+            const dateB = b.createdAt?._seconds
+              ? b.createdAt._seconds * 1000
+              : new Date(b.createdAt).getTime();
+            return dateB - dateA;
+          })
+          .map((order) => (
+            <Card key={order.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">{order.title}</h3>
+                    <p className="text-gray-600">{order.description}</p>
                   </div>
-                )}
-                {order.technician && (
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" /> Técnico: {order.technician.name}
+                  <div className="flex gap-2">
+                    <Badge className={getStatusColor(order.status)}>
+                      {getStatusText(order.status)}
+                    </Badge>
+                    <Badge variant="outline" className={getPriorityColor(order.priority)}>
+                      {getPriorityText(order.priority)}
+                    </Badge>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Botões de Ação */}
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-yellow-600"
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setModalAction('pause');
-                  }}
-                >
-                  <PauseCircle className="w-4 h-4 mr-1" /> Pausar
-                </Button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-500 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" /> {formatDate(order.createdAt)}
+                  </div>
+                  {order.establishment && (
+                    <div className="flex items-center gap-2">
+                      <Building className="w-4 h-4" /> {order.establishment.name}
+                    </div>
+                  )}
+                  {order.technician && (
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4" /> Técnico: {order.technician.name}
+                    </div>
+                  )}
+                </div>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600"
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setModalAction('cancel');
-                  }}
-                >
-                  <XCircle className="w-4 h-4 mr-1" /> Cancelar
-                </Button>
+                {/* Botões de Ação */}
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-yellow-600"
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setModalAction('pause');
+                    }}
+                  >
+                    <PauseCircle className="w-4 h-4 mr-1" /> Pausar
+                  </Button>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-green-600"
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setModalAction('confirm');
-                  }}
-                >
-                  <CheckCircle className="w-4 h-4 mr-1" /> Confirmar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600"
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setModalAction('cancel');
+                    }}
+                  >
+                    <XCircle className="w-4 h-4 mr-1" /> Cancelar
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-green-600"
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setModalAction('confirm');
+                    }}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" /> Confirmar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
       )}
 
       {/* Modal para ações */}

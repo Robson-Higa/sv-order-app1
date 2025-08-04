@@ -143,8 +143,21 @@ const DashboardPage = () => {
     return baseCards;
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
+  const formatDate = (dateValue) => {
+    if (!dateValue) return 'Data indisponível';
+    let date;
+
+    if (dateValue._seconds) {
+      date = new Date(dateValue._seconds * 1000);
+    } else if (typeof dateValue.toDate === 'function') {
+      date = dateValue.toDate();
+    } else {
+      date = new Date(dateValue);
+    }
+
+    if (isNaN(date.getTime())) return 'Data inválida';
+
+    return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -177,7 +190,7 @@ const DashboardPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">
             {getGreeting()}, {user?.name?.split(' ')[0]}!
           </h1>
-          <p className="text-gray-600 mt-1">Aqui está um resumo das suas atividades</p>
+          <p className="text-gray-600 mt-1">Aqui está um resumo das atividades</p>
         </div>
 
         {user?.userType === UserType.END_USER && (
@@ -285,7 +298,9 @@ const DashboardPage = () => {
               <CardContent className="p-6 text-center">
                 <Users className="w-8 h-8 text-primary mx-auto mb-3" />
                 <h3 className="font-medium mb-1">Gerenciar Usuários</h3>
-                <p className="text-sm text-muted-foreground">Adicionar e gerenciar usuários do sistema</p>
+                <p className="text-sm text-muted-foreground">
+                  Adicionar e gerenciar usuários do sistema
+                </p>
               </CardContent>
             </Card>
 
@@ -296,7 +311,9 @@ const DashboardPage = () => {
               <CardContent className="p-6 text-center">
                 <TrendingUp className="w-8 h-8 text-primary mx-auto mb-3" />
                 <h3 className="font-medium mb-1">Relatórios</h3>
-                <p className="text-sm text-muted-foreground">Visualizar relatórios e análises do sistema</p>
+                <p className="text-sm text-muted-foreground">
+                  Visualizar relatórios e análises do sistema
+                </p>
               </CardContent>
             </Card>
           </>

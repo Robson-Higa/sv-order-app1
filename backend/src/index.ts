@@ -14,13 +14,14 @@ import tokenRoutes from './routes/auth'
 import reportRoutes from './routes/report'
 import titleRoutes from './routes/titles';
 import sectorRoutes from './routes/sectors';
+import whatsappRoutes from './routes/whatsappRoutes';
 import { ServiceOrderController } from './controllers/ServiceOrderController';
 import path from 'path';
 
 dotenv.config();
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3000; // Changed default port to 3001 to avoid conflict
 
 const serviceOrderController = new ServiceOrderController();
 
@@ -58,7 +59,8 @@ app.use('/api/service-orders', serviceOrderRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use("/api/titles", titleRoutes);
-app.use('/api', sectorRoutes); 
+app.use('/api', sectorRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Rota de health check
 app.get('/health', (req, res) => {

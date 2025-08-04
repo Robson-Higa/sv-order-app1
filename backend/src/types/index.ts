@@ -35,7 +35,7 @@ export interface Establishment {
   export interface ServiceOrder {
     id: string;
     orderNumber: string;
-    title: string;
+    title?: string;
     description: string;
     priority: Priority;
     status: ServiceOrderStatus;
@@ -81,7 +81,8 @@ export enum ServiceOrderStatus {
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
-  CONFIRMED = 'confirmed'
+  CONFIRMED = 'confirmed',
+  PENDING = 'pending'
 }
 
 export enum Priority {
