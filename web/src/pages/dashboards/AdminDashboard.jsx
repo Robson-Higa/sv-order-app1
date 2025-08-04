@@ -197,11 +197,11 @@ const DashboardPage = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">{card.value}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{card.title}</p>
+                    <p className="text-2xl font-bold mt-2">{card.value}</p>
                   </div>
-                  <div className={`p-3 rounded-full ${card.bgColor}`}>
-                    <Icon className={`w-6 h-6 ${card.color}`} />
+                  <div className={`p-3 rounded-full bg-primary/10`}>
+                    <Icon className={`w-6 h-6 text-primary`} />
                   </div>
                 </div>
               </CardContent>
@@ -234,21 +234,21 @@ const DashboardPage = () => {
               {recentOrders.slice(0, 5).map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="flex items-center justify-between p-4 border-b last:border-b-0 hover:bg-accent/20 cursor-pointer transition-colors"
                   onClick={() => navigate(`/service-orders/${order.id}`)}
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h4 className="font-medium text-gray-900">{order.title}</h4>
+                      <h4 className="font-medium">{order.title}</h4>
                       <Badge className={getStatusColor(order.status)}>
                         {getStatusText(order.status)}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">
+                    <p className="text-sm text-muted-foreground mb-1">
                       {order.description?.substring(0, 100)}
                       {order.description?.length > 100 && '...'}
                     </p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span>Criada em: {formatDate(order.createdAt)}</span>
                       {order.establishment && <span>ESF: {order.establishment.name}</span>}
                       {order.technician && <span>Técnico: {order.technician.name}</span>}
@@ -264,13 +264,13 @@ const DashboardPage = () => {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card
-          className="cursor-pointer hover:shadow-md transition-shadow"
+          className="cursor-pointer hover:shadow-lg transition-all border-l-blue-600"
           onClick={() => navigate('/service-orders')}
         >
           <CardContent className="p-6 text-center">
-            <ClipboardList className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-            <h3 className="font-medium text-gray-900 mb-1">Gerenciar Ordens</h3>
-            <p className="text-sm text-gray-600">
+            <ClipboardList className="w-8 h-8 text-primary mx-auto mb-3" />
+            <h3 className="font-medium mb-1">Gerenciar Ordens</h3>
+            <p className="text-sm text-muted-foreground">
               Visualizar e gerenciar todas as ordens de serviço
             </p>
           </CardContent>
@@ -279,24 +279,24 @@ const DashboardPage = () => {
         {user?.userType === UserType.ADMIN && (
           <>
             <Card
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-lg transition-all border-l-blue-600"
               onClick={() => navigate('/users')}
             >
               <CardContent className="p-6 text-center">
-                <Users className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                <h3 className="font-medium text-gray-900 mb-1">Gerenciar Usuários</h3>
-                <p className="text-sm text-gray-600">Adicionar e gerenciar usuários do sistema</p>
+                <Users className="w-8 h-8 text-primary mx-auto mb-3" />
+                <h3 className="font-medium mb-1">Gerenciar Usuários</h3>
+                <p className="text-sm text-muted-foreground">Adicionar e gerenciar usuários do sistema</p>
               </CardContent>
             </Card>
 
             <Card
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-lg transition-all border-l-blue-600"
               onClick={() => navigate('/reports')}
             >
               <CardContent className="p-6 text-center">
-                <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-3" />
-                <h3 className="font-medium text-gray-900 mb-1">Relatórios</h3>
-                <p className="text-sm text-gray-600">Visualizar relatórios e análises do sistema</p>
+                <TrendingUp className="w-8 h-8 text-primary mx-auto mb-3" />
+                <h3 className="font-medium mb-1">Relatórios</h3>
+                <p className="text-sm text-muted-foreground">Visualizar relatórios e análises do sistema</p>
               </CardContent>
             </Card>
           </>
@@ -304,13 +304,13 @@ const DashboardPage = () => {
 
         {user?.userType === UserType.END_USER && (
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer hover:shadow-lg transition-all border-l-blue-600"
             onClick={() => navigate('/service-orders/new')}
           >
             <CardContent className="p-6 text-center">
-              <Plus className="w-8 h-8 text-green-600 mx-auto mb-3" />
-              <h3 className="font-medium text-gray-900 mb-1">Nova Ordem</h3>
-              <p className="text-sm text-gray-600">Criar uma nova ordem de serviço</p>
+              <Plus className="w-8 h-8 text-primary mx-auto mb-3" />
+              <h3 className="font-medium mb-1">Nova Ordem</h3>
+              <p className="text-sm text-muted-foreground">Criar uma nova ordem de serviço</p>
             </CardContent>
           </Card>
         )}

@@ -102,10 +102,9 @@ const Layout = ({ children }) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed z-50 inset-y-0 left-0 transform ${
+        className={`sidebar-custom ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } transition-transform duration-300 ease-in-out
-  w-64 bg-white shadow-lg lg:static lg:translate-x-0 lg:flex flex-col justify-between`}
+        } lg:static lg:translate-x-0 lg:flex flex-col justify-between`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b">
           <div className="flex items-center gap-2">
@@ -134,7 +133,7 @@ const Layout = ({ children }) => {
                   variant={isActive ? 'default' : 'ghost'}
                   className={`
                     w-full justify-start mb-1 h-10
-                    ${isActive ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}
+                    ${isActive ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}
                   `}
                   onClick={() => {
                     navigate(item.path);
@@ -176,7 +175,7 @@ const Layout = ({ children }) => {
       {/* Main content */}
       <div className="lg:pl-64">
         {/* Top bar */}
-        <header className="bg-white shadow-sm border-b h-16 flex items-center justify-between px-4 lg:px-6">
+        <header className="bg-card shadow-md border-b h-16 flex items-center justify-between px-4 lg:px-6">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"

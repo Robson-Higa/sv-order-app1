@@ -68,7 +68,6 @@ async createEstablishment(req: Request, res: Response) {
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
-
   async updateEstablishment(req: AuthRequest, res: Response) {
     try {
       if (req.user?.userType !== UserType.ADMIN) {

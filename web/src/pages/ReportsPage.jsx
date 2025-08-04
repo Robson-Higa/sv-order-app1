@@ -29,7 +29,6 @@ const ReportsPage = () => {
     }
   };
 
-  // Gerar PDF profissional
   const exportPDF = () => {
     const doc = new jsPDF('p', 'mm', 'a4');
 
@@ -51,20 +50,26 @@ const ReportsPage = () => {
       'Criado em',
       'Solução',
       'Feedback',
-      'Motivo Cancelamento',
+      'Cancelamento',
     ];
 
-    const tableRows = orders.map((order) => [
-      order.orderNumber,
-      order.title,
-      order.status,
-      order.technicianName || '-',
-      order.establishmentName || '-',
-      order.createdAt || '-',
-      order.solution || '-',
-      order.feedback || '-',
-      order.cancelReason || '-',
-    ]);
+    const tableRows = orders.map((order) => {
+      const createdAtDate = order.createdAt?.seconds
+        ? new Date(order.createdAt.seconds * 1000)
+        : null;
+
+      return [
+        order.orderNumber || '-',
+        order.title || '-',
+        order.status || '-',
+        order.technicianName || '-',
+        order.establishmentName || '-',
+        createdAtDate ? format(createdAtDate, 'dd/MM/yyyy HH:mm') : '-',
+        order.solution || '-',
+        order.feedback || '-',
+        order.cancelReason || '-',
+      ];
+    });
 
     doc.autoTable({
       head: [tableColumn],

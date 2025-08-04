@@ -53,22 +53,22 @@ export const getUserTypeText = (userType) => {
 
 export const getStatusColor = (status) => {
   const colorMap = {
-    open: 'bg-yellow-100 text-yellow-800',
-    assigned: 'bg-blue-100 text-blue-800',
-    in_progress: 'bg-indigo-100 text-indigo-800',
-    completed: 'bg-green-100 text-green-800',
-    confirmed: 'bg-purple-100 text-purple-800',
-    cancelled: 'bg-red-100 text-red-800',
+    open: 'variant-warning',
+    assigned: 'variant-info',
+    in_progress: 'variant-secondary',
+    completed: 'variant-success',
+    confirmed: 'variant-primary',
+    cancelled: 'variant-destructive',
   };
-  return colorMap[status] || 'bg-gray-100 text-gray-800';
+  return colorMap[status] || 'variant-default';
 };
 
 export const getPriorityColor = (priority) => {
   const colorMap = {
-    low: 'text-green-600',
-    medium: 'text-yellow-600',
-    high: 'text-orange-600',
-    urgent: 'text-red-600',
+    low: 'text-success',
+    medium: 'text-warning',
+    high: 'text-warning font-semibold',
+    urgent: 'text-destructive font-semibold',
   };
-  return colorMap[priority] || 'text-gray-600';
+  return colorMap[priority] || 'text-muted-foreground';
 };
