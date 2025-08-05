@@ -64,29 +64,91 @@ const TechnicianDashboard = () => {
     }
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    doc.text('Relatório de Ordens Concluídas', 14, 16);
-    const tableColumn = ['OS', 'Título', 'Estabelecimento', 'Data Conclusão'];
-    const tableRows = [];
+  const generatePDF = async () => {
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Título centralizado
+      doc.setFontSize(18);
+      doc.text('Relatório de Ordens Concluídas', pageWidth / 2, 20, { align: 'center' });
+      
+      // Data de geração
+      doc.setFontSize(12);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 30, { align: 'center' });
+      
+      // Função para carregar a imagem como Promise
+      const loadImage = (src) => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = (e) => reject(e);
+          img.src = src;
+        });
+      };
+      
+      // Adicionar logo na capa
+      try {
+        const logoImg = await loadImage('/src/assets/images/logo-aqu.6cc27101.png');
+        const imgWidth = 60;
+        const imgHeight = 60;
+        doc.addImage(logoImg, 'PNG', pageWidth / 2 - imgWidth / 2, 40, imgWidth, imgHeight);
+      } catch (logoError) {
+        console.error('Erro ao carregar a logo:', logoError);
+        // Continua sem a logo
+      }
+      
+      // Informações do técnico
+      doc.setFontSize(14);
+      doc.text(`Técnico: ${user?.name || 'Não informado'}`, 14, 110);
+      
+      // Tabela de ordens
+      const tableColumn = ['OS', 'Título', 'Estabelecimento', 'Data Conclusão'];
+      const tableRows = [];
 
-    orders
-      .filter((order) => order.status.toLowerCase() === 'completed')
-      .forEach((order) => {
-        const updatedAtDate = order.updatedAt?.seconds
-          ? new Date(order.updatedAt.seconds * 1000)
-          : new Date(order.updatedAt);
-        const row = [
-          order.orderNumber,
-          order.title,
-          order.establishmentName,
-          updatedAtDate.toLocaleDateString('pt-BR'),
-        ];
-        tableRows.push(row);
+      orders
+        .filter((order) => order.status.toLowerCase() === 'completed')
+        .forEach((order) => {
+          const updatedAtDate = order.updatedAt?.seconds
+            ? new Date(order.updatedAt.seconds * 1000)
+            : new Date(order.updatedAt);
+          const row = [
+            order.orderNumber,
+            order.title,
+            order.establishmentName,
+            updatedAtDate.toLocaleDateString('pt-BR'),
+          ];
+          tableRows.push(row);
+        });
+
+      doc.autoTable(tableColumn, tableRows, { 
+        startY: 120,
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        styles: {
+          fontSize: 10,
+          cellPadding: 3,
+        },
+        didDrawPage: (data) => {
+          // Footer com número de página
+          const pageCount = doc.getNumberOfPages();
+          doc.setFontSize(10);
+          doc.text(
+            `Página ${data.pageNumber} de ${pageCount}`,
+            data.settings.margin.left,
+            doc.internal.pageSize.height - 10
+          );
+        },
       });
-
-    doc.autoTable(tableColumn, tableRows, { startY: 20 });
-    doc.save('relatorio-tecnico.pdf');
+      
+      doc.save(`relatorio-tecnico-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+    }
   };
 
   const formatDate = (date) => {

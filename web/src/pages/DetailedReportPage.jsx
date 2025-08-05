@@ -186,7 +186,7 @@ const DetailedReportPage = () => {
             <h2 className="text-xl font-bold">Relatório de Ordens de Serviço</h2>
             <p className="text-sm text-gray-600">Emitido em {new Date().toLocaleDateString()}</p>
           </div>
-          <img id="report-logo" src="/images/logo.png" alt="Logo" className="h-12" />
+          <img id="report-logo" src="/src/assets/images/logo-aqu.6cc27101.png" alt="Logo" className="h-16" />
         </header>
 
         {/* KPIs */}

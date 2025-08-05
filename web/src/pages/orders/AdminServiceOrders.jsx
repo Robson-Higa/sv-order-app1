@@ -145,6 +145,16 @@ const AdminServiceOrders = () => {
     setRefreshing(false);
   };
 
+  const resetFilters = () => {
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setEstablishmentFilter('all');
+    setTechnicianFilter('all');
+    setTitle(''); // limpa Autocomplete
+    setSearchTerm('');
+    loadOrders(); // recarrega todas as ordens
+  };
+
   const formatDate = (dateValue) => {
     if (!dateValue) return 'Data indisponível';
     let date;
@@ -210,8 +220,10 @@ const AdminServiceOrders = () => {
             <label className="block mb-1 text-sm font-medium">Buscar</label>
             <Autocomplete
               options={titles}
-              getOptionLabel={(option) => (typeof option === 'string' ? option : option.title)}
-              value={titles.find((t) => t.title === title) || title || null}
+              getOptionLabel={(option) =>
+                typeof option === 'string' ? option : option.title || ''
+              }
+              value={title || null}
               onChange={(_, newValue) => {
                 let val = '';
                 if (typeof newValue === 'string') {
@@ -221,6 +233,7 @@ const AdminServiceOrders = () => {
                 }
                 setTitle(val);
                 setSearchTerm(val); // <--- adiciona aqui para filtrar na busca
+                loadOrders();
               }}
               freeSolo
               renderInput={(params) => (
@@ -304,6 +317,13 @@ const AdminServiceOrders = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Botão de limpar filtros */}
+          <div className="flex items-end justify-start">
+            <Button variant="outline" className="w-full md:w-auto" onClick={resetFilters}>
+              Limpar Filtros
+            </Button>
           </div>
         </CardContent>
       </Card>

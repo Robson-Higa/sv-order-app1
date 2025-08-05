@@ -1,16 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { apiService } from '@/services/api';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
+import {
+  Chart,
+  BarController,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+  Title,
+} from 'chart.js';
+
+// Registrar todos os componentes necessários
+Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend, Title);
 
 const ReportsPage = () => {
   const [orders, setOrders] = useState([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
-  // Função para buscar dados do relatório
   const fetchOrders = async () => {
     if (!startDate || !endDate) {
       alert('Selecione um período válido');
@@ -29,60 +42,372 @@ const ReportsPage = () => {
     }
   };
 
-  const exportPDF = () => {
-    const doc = new jsPDF('p', 'mm', 'a4');
+  // Adicione esta função utilitária no seu componente
+  const traduzirStatus = (status) => {
+    if (!status) return 'Desconhecido';
 
-    // Cabeçalho
-    doc.setFontSize(18);
-    doc.text('Relatório de Ordens de Serviço', 14, 15);
+    const statusLower = status.toLowerCase().trim();
 
-    doc.setFontSize(11);
-    doc.text(`Período: ${startDate} até ${endDate}`, 14, 25);
-    doc.text(`Data de geração: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 32);
+    const mapeamento = {
+      open: 'Aberto',
+      opened: 'Aberto',
+      pending: 'Pendente',
+      'in progress': 'Em Andamento',
+      completed: 'Concluído',
+      closed: 'Fechado',
+      cancelled: 'Cancelado',
+      canceled: 'Cancelado',
+      resolved: 'Resolvido',
+      reopened: 'Reaberto',
+    };
 
-    // Tabela
-    const tableColumn = [
-      'Nº OS',
-      'Título',
-      'Status',
-      'Técnico',
-      'Estabelecimento',
-      'Criado em',
-      'Solução',
-      'Feedback',
-      'Cancelamento',
-    ];
-
-    const tableRows = orders.map((order) => {
-      const createdAtDate = order.createdAt?.seconds
-        ? new Date(order.createdAt.seconds * 1000)
-        : null;
-
-      return [
-        order.orderNumber || '-',
-        order.title || '-',
-        order.status || '-',
-        order.technicianName || '-',
-        order.establishmentName || '-',
-        createdAtDate ? format(createdAtDate, 'dd/MM/yyyy HH:mm') : '-',
-        order.solution || '-',
-        order.feedback || '-',
-        order.cancelReason || '-',
-      ];
-    });
-
-    doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
-      startY: 40,
-      theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
-    });
-
-    doc.save(`relatorio-os-${startDate}-a-${endDate}.pdf`);
+    return mapeamento[statusLower] || status; // Mantém o original se não encontrar tradução
   };
 
+  const generateHorizontalBarChart = async (data, title) => {
+    const translatedData = {};
+    Object.entries(data).forEach(([status, count]) => {
+      const translatedStatus = traduzirStatus(status);
+      translatedData[translatedStatus] = (translatedData[translatedStatus] || 0) + count;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+
+    const total = Object.values(translatedData).reduce((sum, value) => sum + value, 0);
+    const labels = Object.keys(translatedData);
+    const values = Object.values(translatedData);
+
+    return new Promise((resolve) => {
+      const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Quantidade',
+              data: values,
+              backgroundColor: [
+                '#36a2ebaa',
+                '#4bc0c0aa',
+                '#ff9f40aa',
+                '#ff6384aa',
+                '#9966ffaa',
+                '#ffcd56aa',
+                '#c9cbcfaa',
+              ],
+              borderColor: [
+                '#36a2eb',
+                '#4bc0c0',
+                '#ff9f40',
+                '#ff6384',
+                '#9966ff',
+                '#ffcd56',
+                '#c9cbcf',
+              ],
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: false,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: title,
+              font: {
+                size: 16,
+                weight: 'bold',
+              },
+              padding: {
+                top: 10,
+                bottom: 20,
+              },
+            },
+            legend: {
+              display: false,
+            },
+            tooltip: {
+              callbacks: {
+                label: function (context) {
+                  const value = context.raw;
+                  const percentage = ((value / total) * 100).toFixed(1);
+                  return `${value} ordens (${percentage}%)`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Quantidade de Ordens',
+                font: {
+                  weight: 'bold',
+                },
+              },
+              ticks: {
+                callback: function (value) {
+                  return value;
+                },
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Status',
+                font: {
+                  weight: 'bold',
+                },
+              },
+            },
+          },
+          animation: {
+            onComplete: () => {
+              setTimeout(() => {
+                const image = canvas.toDataURL('image/png', 1.0);
+                chart.destroy();
+                resolve(image);
+              }, 200);
+            },
+          },
+        },
+      });
+    });
+  };
+  const generateChartImage = async (data, title) => {
+    const canvas = document.createElement('canvas');
+    // Increased resolution for better quality in PDF
+    canvas.width = 1000;
+    canvas.height = 500;
+    const ctx = canvas.getContext('2d');
+
+    return new Promise((resolve) => {
+      const chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(data),
+          datasets: [
+            {
+              data: Object.values(data),
+              backgroundColor: [
+                '#3498db',
+                '#2ecc71',
+                '#e74c3c',
+                '#f1c40f',
+                '#9b59b6',
+                '#1abc9c',
+                '#d35400',
+                '#34495e',
+              ],
+            },
+          ],
+        },
+        options: {
+          responsive: false,
+          maintainAspectRatio: false,
+          animation: {
+            onComplete: () => {
+              setTimeout(() => {
+                // Small delay to ensure rendering
+                const image = canvas.toDataURL('image/png', 1.0);
+                chart.destroy();
+                resolve(image);
+              }, 200);
+            },
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: title,
+              font: { size: 18 },
+            },
+            legend: {
+              position: 'right',
+              labels: { font: { size: 14 } },
+            },
+          },
+        },
+      });
+    });
+  };
+  // ✅ Agora assíncrona
+  // Add this utility function at the top of your component
+  const loadImage = (src) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (e) => reject(e);
+      img.src = src;
+    });
+  };
+
+  const exportPDF = async () => {
+    setPdfLoading(true);
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      // ===== COVER PAGE =====
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const centerX = pageWidth / 2;
+
+      // Try to load logo with multiple fallback options
+      let logoImg;
+      const logoPaths = [
+        'src/assets/images/logo-aqu.6cc27101.png',
+        '/logo.png',
+        'logo.png',
+        '/public/logo.png',
+      ];
+
+      for (const path of logoPaths) {
+        try {
+          logoImg = await loadImage(path);
+          break; // Use first successful load
+        } catch (e) {
+          console.warn(`Could not load logo from ${path}`);
+        }
+      }
+
+      // Add logo if loaded, otherwise use text fallback
+      if (logoImg) {
+        const logoWidth = 120;
+        const logoHeight = 30;
+        doc.addImage(logoImg, 'PNG', centerX - logoWidth / 2, 20, logoWidth, logoHeight);
+      } else {
+        doc.setFontSize(16);
+        doc.text('Prefeitura Municipal', centerX, 40, { align: 'center' });
+      }
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('- SESAU -', centerX, 65, { align: 'center' });
+      doc.text('SECRETARIA MUNICIPAL DE SAÚDE E SANEAMENTO', centerX, 75, { align: 'center' });
+      doc.text('SETOR DE INFORMÁTICA', centerX, 85, { align: 'center' });
+      // Rest of your PDF generation code remains the same...
+
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Relatório de Ordens de Serviço', centerX, 150, { align: 'center' });
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Período: ${startDate} até ${endDate}`, centerX, 170, { align: 'center' });
+      doc.text(`Data de geração: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, centerX, 270, {
+        align: 'center',
+      });
+
+      // ===== SUMMARY PAGE =====
+      doc.addPage();
+
+      const totalOrders = orders.length;
+      const statusCounts = orders.reduce((acc, order) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Summary content
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumo', 20, 20);
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total de Ordens: ${totalOrders}`, 20, 30);
+
+      Object.entries(statusCounts).forEach(([status, count], index) => {
+        const translatedStatus = traduzirStatus(status);
+        const percentage = ((count / totalOrders) * 100).toFixed(1);
+        doc.text(`${translatedStatus}: ${count} (${percentage}%)`, 20, 40 + index * 10);
+      });
+
+      // ===== CHART =====
+      try {
+        const chartImage = await generateHorizontalBarChart(
+          statusCounts,
+          'Distribuição de Ordens por Status'
+        );
+        doc.addImage(chartImage, 'PNG', 15, 120, 160, 90);
+      } catch (error) {
+        console.error('Erro ao gerar gráfico:', error);
+        doc.text('Gráfico não disponível', 15, 70);
+        doc.text(error.message, 15, 80);
+      }
+
+      // ===== DETAILED TABLE =====
+      doc.addPage();
+
+      const tableColumns = [
+        { header: 'Nº OS', dataKey: 'orderNumber' },
+        { header: 'Título', dataKey: 'title' },
+        { header: 'Status', dataKey: 'status' },
+        { header: 'Técnico', dataKey: 'technician' },
+        { header: 'Local', dataKey: 'establishment' },
+        { header: 'Data', dataKey: 'createdAt' },
+        { header: 'Solução', dataKey: 'solution' },
+      ];
+
+      const tableData = orders.map((order) => ({
+        orderNumber: order.orderNumber || '-',
+        title: order.title || '-',
+        status: traduzirStatus(order.status) || '-', // Aqui aplicamos a tradução
+        technician: order.technicianName || '-',
+        establishment: order.establishmentName || '-',
+        createdAt: order.createdAt?.seconds
+          ? format(new Date(order.createdAt.seconds * 1000), 'dd/MM/yy HH:mm')
+          : '-',
+        solution: order.solution || '-',
+      }));
+
+      // Generate table
+      autoTable(doc, {
+        columns: tableColumns,
+        body: tableData,
+        startY: 25,
+        margin: { top: 25 },
+        styles: {
+          fontSize: 9,
+          cellPadding: 2,
+          overflow: 'linebreak',
+          minCellHeight: 5,
+        },
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontSize: 10,
+          cellPadding: 3,
+        },
+        alternateRowStyles: {
+          fillColor: [240, 240, 240],
+        },
+        didDrawPage: (data) => {
+          // Footer
+          doc.setFontSize(10);
+          doc.text(
+            `Página ${data.pageNumber} de ${doc.getNumberOfPages()}`,
+            data.settings.margin.left,
+            doc.internal.pageSize.height - 10
+          );
+        },
+      });
+
+      // Save PDF
+      doc.save(`relatorio-os-${startDate}_${endDate}.pdf`);
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      alert(`Falha ao gerar PDF: ${error.message}`);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Relatórios</h1>
@@ -127,7 +452,7 @@ const ReportsPage = () => {
         )}
       </div>
 
-      {/* Tabela de resultados */}
+      {/* Tabela */}
       <div className="overflow-x-auto bg-white rounded shadow">
         {loading ? (
           <p className="p-4">Carregando...</p>
@@ -156,7 +481,11 @@ const ReportsPage = () => {
                   <td className="px-4 py-2 border-b">{order.status}</td>
                   <td className="px-4 py-2 border-b">{order.technicianName || '-'}</td>
                   <td className="px-4 py-2 border-b">{order.establishmentName || '-'}</td>
-                  <td className="px-4 py-2 border-b">{order.createdAt}</td>
+                  <td className="px-4 py-2 border-b">
+                    {order.createdAt?.seconds
+                      ? format(new Date(order.createdAt.seconds * 1000), 'dd/MM/yyyy HH:mm')
+                      : '-'}
+                  </td>
                   <td className="px-4 py-2 border-b">{order.solution || '-'}</td>
                   <td className="px-4 py-2 border-b">{order.feedback || '-'}</td>
                   <td className="px-4 py-2 border-b">{order.cancelReason || '-'}</td>
