@@ -52,13 +52,26 @@ const ReportsPage = () => {
       open: 'Aberto',
       opened: 'Aberto',
       pending: 'Pendente',
-      'in progress': 'Em Andamento',
+      in_progress: 'Em Andamento',
       completed: 'Concluído',
       closed: 'Fechado',
       cancelled: 'Cancelado',
       canceled: 'Cancelado',
       resolved: 'Resolvido',
       reopened: 'Reaberto',
+      paused: 'Pausado',
+      reactivated: 'Reativado',
+      assigned: 'Atribuído',
+      confirmed: 'Confirmado',
+      PAUSED: 'Pausado',
+      IN_PROGRESS: 'Em Andamento',
+      COMPLETED: 'Concluído',
+      CANCELLED: 'Cancelado',
+      CONFIRMED: 'Confirmado',
+      REACTIVATED: 'Reativado',
+      ASSIGNED: 'Atribuído',
+      OPEN: 'Aberto',
+      OPENED: 'Aberto',
     };
 
     return mapeamento[statusLower] || status; // Mantém o original se não encontrar tradução
@@ -247,18 +260,36 @@ const ReportsPage = () => {
     });
   };
 
+  const getPriorityText = (priority) => {
+    const map = {
+      low: 'Baixa',
+      medium: 'Média',
+      high: 'Alta',
+    };
+    return map[priority] || priority;
+  };
+
   const exportPDF = async () => {
     setPdfLoading(true);
     try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      // ===== COVER PAGE =====
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 14;
       const centerX = pageWidth / 2;
+
+      // Função para formatar datas
+      const formatDate = (dateValue) => {
+        if (!dateValue) return '-';
+        if (dateValue.seconds) {
+          return new Date(dateValue.seconds * 1000).toLocaleString('pt-BR');
+        }
+        return new Date(dateValue).toLocaleString('pt-BR');
+      };
+
+      const getPriorityText = (priority) => {
+        const map = { low: 'Baixa', medium: 'Média', high: 'Alta' };
+        return map[priority] || priority;
+      };
 
       // Try to load logo with multiple fallback options
       let logoImg;
@@ -280,33 +311,40 @@ const ReportsPage = () => {
 
       // Add logo if loaded, otherwise use text fallback
       if (logoImg) {
-        const logoWidth = 120;
-        const logoHeight = 30;
+        const logoWidth = 80;
+        const logoHeight = 25;
         doc.addImage(logoImg, 'PNG', centerX - logoWidth / 2, 20, logoWidth, logoHeight);
       } else {
         doc.setFontSize(16);
-        doc.text('Prefeitura Municipal', centerX, 40, { align: 'center' });
+        doc.text('Prefeitura Municipal', centerX, 40, { align: 'left' });
       }
-      doc.setFontSize(12);
+      //doc.setFont('helvetica', 'bold');
+      //doc.setFontSize(18);
+      //doc.text('Prefeitura Municipal', centerX, 40, { align: 'center' });
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('- SESAU -', centerX, 65, { align: 'center' });
-      doc.text('SECRETARIA MUNICIPAL DE SAÚDE E SANEAMENTO', centerX, 75, { align: 'center' });
-      doc.text('SETOR DE INFORMÁTICA', centerX, 85, { align: 'center' });
-      // Rest of your PDF generation code remains the same...
+      doc.text('SESAU', centerX, 50, { align: 'center' });
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SECRETARIA MUNICIPAL DE SAÚDE E SANEAMENTO', centerX, 55, { align: 'center' });
+      doc.text('Setor de Informática', centerX, 60, { align: 'center' });
 
       doc.setFontSize(22);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Relatório de Ordens de Serviço', centerX, 150, { align: 'center' });
+      doc.text('Relatório de Ordens de Serviço', centerX, 130, { align: 'center' });
 
       doc.setFontSize(14);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Período: ${startDate} até ${endDate}`, centerX, 170, { align: 'center' });
+      doc.text(`Período: ${startDate} até ${endDate}`, centerX, 150, { align: 'center' });
       doc.text(`Data de geração: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, centerX, 270, {
         align: 'center',
       });
 
-      // ===== SUMMARY PAGE =====
+      // ==== RESUMO ====
       doc.addPage();
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resumo', margin, 20);
 
       const totalOrders = orders.length;
       const statusCounts = orders.reduce((acc, order) => {
@@ -314,92 +352,133 @@ const ReportsPage = () => {
         return acc;
       }, {});
 
-      // Summary content
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Resumo', 20, 20);
-
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Total de Ordens: ${totalOrders}`, 20, 30);
+      doc.text(`Total de Ordens: ${totalOrders}`, margin, 30);
 
-      Object.entries(statusCounts).forEach(([status, count], index) => {
+      let ySummary = 40;
+      Object.entries(statusCounts).forEach(([status, count]) => {
         const translatedStatus = traduzirStatus(status);
         const percentage = ((count / totalOrders) * 100).toFixed(1);
-        doc.text(`${translatedStatus}: ${count} (${percentage}%)`, 20, 40 + index * 10);
+        doc.text(`${translatedStatus}: ${count} (${percentage}%)`, margin, ySummary);
+        ySummary += 8;
       });
 
-      // ===== CHART =====
       try {
         const chartImage = await generateHorizontalBarChart(
           statusCounts,
           'Distribuição de Ordens por Status'
         );
-        doc.addImage(chartImage, 'PNG', 15, 120, 160, 90);
-      } catch (error) {
-        console.error('Erro ao gerar gráfico:', error);
-        doc.text('Gráfico não disponível', 15, 70);
-        doc.text(error.message, 15, 80);
+        doc.addImage(chartImage, 'PNG', margin, ySummary + 10, 180, 90);
+      } catch (err) {
+        doc.text('Gráfico não disponível.', margin, ySummary + 10);
       }
 
-      // ===== DETAILED TABLE =====
+      // ==== DETALHES EM CARDS ====
       doc.addPage();
+      doc.setFontSize(18);
+      doc.text('Detalhes das Ordens', margin, 20);
 
-      const tableColumns = [
-        { header: 'Nº OS', dataKey: 'orderNumber' },
-        { header: 'Título', dataKey: 'title' },
-        { header: 'Status', dataKey: 'status' },
-        { header: 'Técnico', dataKey: 'technician' },
-        { header: 'Local', dataKey: 'establishment' },
-        { header: 'Data', dataKey: 'createdAt' },
-        { header: 'Solução', dataKey: 'solution' },
-      ];
+      let y = 35;
 
-      const tableData = orders.map((order) => ({
-        orderNumber: order.orderNumber || '-',
-        title: order.title || '-',
-        status: traduzirStatus(order.status) || '-', // Aqui aplicamos a tradução
-        technician: order.technicianName || '-',
-        establishment: order.establishmentName || '-',
-        createdAt: order.createdAt?.seconds
-          ? format(new Date(order.createdAt.seconds * 1000), 'dd/MM/yy HH:mm')
-          : '-',
-        solution: order.solution || '-',
-      }));
+      orders.forEach((order) => {
+        // Calcular altura necessária
+        let baseHeight = 40; // espaço mínimo para cabeçalho e campos fixos
+        let solutionHeight = 0;
+        let feedbackHeight = 0;
 
-      // Generate table
-      autoTable(doc, {
-        columns: tableColumns,
-        body: tableData,
-        startY: 25,
-        margin: { top: 25 },
-        styles: {
-          fontSize: 9,
-          cellPadding: 2,
-          overflow: 'linebreak',
-          minCellHeight: 5,
-        },
-        headStyles: {
-          fillColor: [41, 128, 185],
-          textColor: 255,
-          fontSize: 10,
-          cellPadding: 3,
-        },
-        alternateRowStyles: {
-          fillColor: [240, 240, 240],
-        },
-        didDrawPage: (data) => {
-          // Footer
-          doc.setFontSize(10);
-          doc.text(
-            `Página ${data.pageNumber} de ${doc.getNumberOfPages()}`,
-            data.settings.margin.left,
-            doc.internal.pageSize.height - 10
-          );
-        },
+        if (order.solution) {
+          const solutionText = doc.splitTextToSize(`Solução: ${order.solution}`, 175);
+          solutionHeight = solutionText.length * 5;
+        }
+
+        if (order.feedback) {
+          const feedbackText = doc.splitTextToSize(`Feedback: ${order.feedback}`, 175);
+          feedbackHeight = feedbackText.length * 5;
+        }
+
+        let cardHeight = baseHeight + solutionHeight + feedbackHeight + 20; // margem extra
+
+        // Verificar se cabe na página
+        if (y + cardHeight > 280) {
+          // 280 mm = limite inferior da A4
+          doc.addPage();
+          y = 20;
+        }
+
+        // Desenhar card com altura dinâmica
+        doc.setDrawColor(200);
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(margin, y, 182, cardHeight, 3, 3, 'FD');
+
+        let textY = y + 8;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(`Nº OS: ${order.orderNumber || '-'}`, margin + 4, textY);
+        textY += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Título: ${order.title || '-'}`, margin + 4, textY);
+        textY += 6;
+        doc.text(
+          `Status: ${traduzirStatus(order.status)} | Prioridade: ${getPriorityText(order.priority)}`,
+          margin + 4,
+          textY
+        );
+        textY += 6;
+        doc.text(
+          `Estabelecimento: ${order.establishmentName || '-'} | Setor: ${order.sector || '-'}`,
+          margin + 4,
+          textY
+        );
+        textY += 6;
+        doc.text(`Técnico: ${order.technicianName || '-'}`, margin + 4, textY);
+        textY += 6;
+
+        doc.text(
+          `Datas: Criada ${formatDate(order.createdAt)} | Atualização ${formatDate(order.updatedAt)}`,
+          margin + 4,
+          textY
+        );
+        textY += 6;
+        doc.text(
+          `Finalizada: ${order.completedAt ? formatDate(order.completedAt) : '-'}`,
+          margin + 4,
+          textY
+        );
+        textY += 6;
+
+        if (order.pauseReason) {
+          doc.text(`Motivo Pausa: ${order.pauseReason}`, margin + 4, textY);
+          textY += 6;
+        }
+        if (order.cancelReason) {
+          doc.text(`Motivo Cancelamento: ${order.cancelReason}`, margin + 4, textY);
+          textY += 6;
+        }
+        if (order.solution) {
+          const solutionText = doc.splitTextToSize(`Solução: ${order.solution}`, 175);
+          doc.text(solutionText, margin + 4, textY);
+          textY += solutionText.length * 5;
+        }
+        if (order.feedback) {
+          const feedbackText = doc.splitTextToSize(`Feedback: ${order.feedback}`, 175);
+          doc.text(feedbackText, margin + 4, textY);
+          textY += feedbackText.length * 5;
+        }
+
+        y = textY + 8;
       });
 
-      // Save PDF
+      // Rodapé
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 2; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.text(`Página ${i} de ${pageCount}`, pageWidth - margin, 290, { align: 'right' });
+      }
+
       doc.save(`relatorio-os-${startDate}_${endDate}.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -408,6 +487,22 @@ const ReportsPage = () => {
       setPdfLoading(false);
     }
   };
+
+  const parseDate = (dateValue) => {
+    if (!dateValue) return null;
+
+    if (dateValue.seconds) {
+      return new Date(dateValue.seconds * 1000);
+    }
+
+    if (typeof dateValue.toDate === 'function') {
+      return dateValue.toDate();
+    }
+
+    const d = new Date(dateValue);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Relatórios</h1>
@@ -471,6 +566,7 @@ const ReportsPage = () => {
                 <th className="px-4 py-2 text-left border-b">Solução</th>
                 <th className="px-4 py-2 text-left border-b">Feedback</th>
                 <th className="px-4 py-2 text-left border-b">Cancelamento</th>
+                <th className="px-4 py-2 text-left border-b">Pausado</th>
               </tr>
             </thead>
             <tbody>
@@ -478,17 +574,20 @@ const ReportsPage = () => {
                 <tr key={idx} className="hover:bg-gray-50">
                   <td className="px-4 py-2 border-b">{order.orderNumber}</td>
                   <td className="px-4 py-2 border-b">{order.title}</td>
-                  <td className="px-4 py-2 border-b">{order.status}</td>
+                  <td className="px-4 py-2 border-b">{traduzirStatus(order.status)}</td>
                   <td className="px-4 py-2 border-b">{order.technicianName || '-'}</td>
                   <td className="px-4 py-2 border-b">{order.establishmentName || '-'}</td>
                   <td className="px-4 py-2 border-b">
-                    {order.createdAt?.seconds
-                      ? format(new Date(order.createdAt.seconds * 1000), 'dd/MM/yyyy HH:mm')
-                      : '-'}
+                    {(() => {
+                      const dateObj = parseDate(order.createdAt);
+                      return dateObj ? format(dateObj, 'dd/MM/yyyy HH:mm') : '-';
+                    })()}
                   </td>
+
                   <td className="px-4 py-2 border-b">{order.solution || '-'}</td>
                   <td className="px-4 py-2 border-b">{order.feedback || '-'}</td>
                   <td className="px-4 py-2 border-b">{order.cancelReason || '-'}</td>
+                  <td className="px-4 py-2 border-b">{order.pauseReason || '-'}</td>
                 </tr>
               ))}
             </tbody>

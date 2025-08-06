@@ -69,7 +69,7 @@ export class ReportController {
         const data = doc.data();
         const name = data.establishment?.name || 'Sem Estabelecimento';
         countByEstablishment[name] = (countByEstablishment[name] || 0) + 1;
-   });
+      });
 
       res.json(countByEstablishment);
     } catch (error) {
@@ -118,14 +118,29 @@ export class ReportController {
       // 🔍 FILTROS OPCIONAIS (atenção: criar índices compostos no Firestore)
       if (startDate) query = query.where('createdAt', '>=', new Date(startDate as string));
       if (endDate) query = query.where('createdAt', '<=', new Date(endDate as string));
-      if (technicianName) query = query.where('technician.name', '==', String(technicianName).toLowerCase());
-      if (establishmentName) query = query.where('establishment.name', '==', String(establishmentName).toLowerCase());
+      if (technicianName)
+        query = query.where('technician.name', '==', String(technicianName).toLowerCase());
+      if (establishmentName)
+        query = query.where('establishment.name', '==', String(establishmentName).toLowerCase());
 
       const snapshot = await query.get();
       const orders = snapshot.docs.map((doc) => doc.data());
 
       // ✅ Meses em PT-BR
-      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const months = [
+        'Jan',
+        'Fev',
+        'Mar',
+        'Abr',
+        'Mai',
+        'Jun',
+        'Jul',
+        'Ago',
+        'Set',
+        'Out',
+        'Nov',
+        'Dez',
+      ];
 
       const monthlyData: Record<string, { total: number; completed: number }> = {};
       months.forEach((month) => {
@@ -133,7 +148,9 @@ export class ReportController {
       });
 
       orders.forEach((order: any) => {
-        const createdAt = order.createdAt?.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+        const createdAt = order.createdAt?.toDate
+          ? order.createdAt.toDate()
+          : new Date(order.createdAt);
         const monthName = months[createdAt.getMonth()];
 
         if (monthName) {
@@ -158,21 +175,29 @@ export class ReportController {
     }
   }
 
-   async getOrdersReport(req: Request, res: Response) {
+  async getOrdersReport(req: Request, res: Response) {
     try {
       const { startDate, endDate, technicianId, establishmentId } = req.query;
 
       if (!startDate || !endDate) {
-        return res.status(400).json({ error: 'Os parâmetros startDate e endDate são obrigatórios.' });
+        return res
+          .status(400)
+          .json({ error: 'Os parâmetros startDate e endDate são obrigatórios.' });
       }
 
       const start = new Date(startDate as string);
       const end = new Date(endDate as string);
       end.setHours(23, 59, 59, 999);
 
-      console.log('📌 [ReportController] Filtros:', { startDate, endDate, technicianId, establishmentId });
+      console.log('📌 [ReportController] Filtros:', {
+        startDate,
+        endDate,
+        technicianId,
+        establishmentId,
+      });
 
-      let query: FirebaseFirestore.Query = db.collection('serviceOrders')
+      let query: FirebaseFirestore.Query = db
+        .collection('serviceOrders')
         .where('createdAt', '>=', start)
         .where('createdAt', '<=', end);
 
@@ -183,7 +208,7 @@ export class ReportController {
 
       console.log(`📌 Total de ordens encontradas: ${snapshot.size}`);
 
-      const orders = snapshot.docs.map(doc => {
+      const orders = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -194,12 +219,14 @@ export class ReportController {
           priority: data.priority || '',
           technicianName: data.technicianName || '',
           establishmentName: data.establishmentName || '',
+          sector: data.sector || '',
           createdAt: data.createdAt ? data.createdAt.toDate().toLocaleString('pt-BR') : '',
           updatedAt: data.updatedAt ? data.updatedAt.toDate().toLocaleString('pt-BR') : '',
           solution: data.solution || '',
           feedback: data.feedback || '',
-          cancelReason: data.cancelReason || '',
-          userName: data.userName || ''
+          cancelReason: data.cancellationReason?.reason || '',
+          pauseReason: data.pauseReason || '',
+          userName: data.userName || '',
         };
       });
 

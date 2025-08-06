@@ -117,18 +117,32 @@ const AdminServiceOrders = () => {
       console.error('Erro ao carregar títulos:', error);
     }
   };
-
   const handleAction = async (action, reason = '') => {
-    try {
-      if (!selectedOrder) return;
+    if (!selectedOrder) return;
 
-      if (action === 'cancel') {
-        await apiService.updateStatus(selectedOrder.id, 'CANCELLED', reason);
-      } else if (action === 'pause') {
-        await apiService.updateStatus(selectedOrder.id, 'PAUSED', reason);
-      } else if (action === 'confirm') {
-        await apiService.updateStatus(selectedOrder.id, 'COMPLETED');
+    try {
+      const payload = { status: '', reason: reason.trim() };
+
+      switch (action) {
+        case 'cancel':
+          payload.status = 'CANCELLED';
+          break;
+        case 'pause':
+          payload.status = 'PAUSED';
+          break;
+        case 'reactivate':
+          payload.status = 'IN_PROGRESS';
+          delete payload.reason;
+          break;
+        case 'confirm':
+          payload.status = 'COMPLETED';
+          delete payload.reason;
+          break;
+        default:
+          return;
       }
+
+      await apiService.updateStatus(selectedOrder.id, payload);
 
       setModalAction(null);
       setSelectedOrder(null);
@@ -154,6 +168,20 @@ const AdminServiceOrders = () => {
     setSearchTerm('');
     loadOrders(); // recarrega todas as ordens
   };
+  const statusLabels = {
+    OPEN: 'Aberta',
+    IN_PROGRESS: 'Em andamento',
+    PAUSED: 'Pausada',
+    open: 'Aberta',
+    in_progress: 'Em andamento',
+    paused: 'Pausada',
+    COMPLETED: 'Concluída',
+    completed: 'Concluída',
+    CANCELLED: 'Cancelada',
+    cancelled: 'Cancelada',
+  };
+
+  const getStatusText = (status) => statusLabels[status] || status;
 
   const formatDate = (dateValue) => {
     if (!dateValue) return 'Data indisponível';
@@ -353,6 +381,17 @@ const AdminServiceOrders = () => {
                   <div>
                     <h3 className="text-lg font-semibold">{order.title}</h3>
                     <p className="text-gray-600">{order.description}</p>
+                    {order.status === 'CANCELLED' && order.cancelReason && (
+                      <p className="text-red-600 text-sm mt-2">
+                        Motivo do cancelamento: {order.cancelReason}
+                      </p>
+                    )}
+
+                    {order.status === 'PAUSED' && order.pauseReason && (
+                      <p className="text-yellow-600 text-sm mt-2">
+                        Motivo da pausa: {order.pauseReason}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Badge className={getStatusColor(order.status)}>
@@ -385,13 +424,22 @@ const AdminServiceOrders = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-yellow-600"
+                    className={order.status === 'PAUSED' ? 'text-green-600' : 'text-yellow-600'}
                     onClick={() => {
                       setSelectedOrder(order);
-                      setModalAction('pause');
+                      setModalAction(order.status === 'PAUSED' ? 'reactivate' : 'pause');
                     }}
+                    disabled={order.status === 'CANCELLED' || order.status === 'COMPLETED'} // Desativa se cancelada ou concluída
                   >
-                    <PauseCircle className="w-4 h-4 mr-1" /> Pausar
+                    {order.status === 'PAUSED' ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-1" /> Reativar
+                      </>
+                    ) : (
+                      <>
+                        <PauseCircle className="w-4 h-4 mr-1" /> Pausar
+                      </>
+                    )}
                   </Button>
 
                   <Button
@@ -402,6 +450,11 @@ const AdminServiceOrders = () => {
                       setSelectedOrder(order);
                       setModalAction('cancel');
                     }}
+                    disabled={
+                      order.status === 'PAUSED' ||
+                      order.status === 'CANCELLED' ||
+                      order.status === 'COMPLETED'
+                    }
                   >
                     <XCircle className="w-4 h-4 mr-1" /> Cancelar
                   </Button>
@@ -414,6 +467,11 @@ const AdminServiceOrders = () => {
                       setSelectedOrder(order);
                       setModalAction('confirm');
                     }}
+                    disabled={
+                      order.status === 'PAUSED' ||
+                      order.status === 'CANCELLED' ||
+                      order.status === 'COMPLETED'
+                    }
                   >
                     <CheckCircle className="w-4 h-4 mr-1" /> Confirmar
                   </Button>

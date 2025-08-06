@@ -4,7 +4,7 @@ export interface User {
   uid: string;
   email: string; // Agora obrigatório
   name: string;
-    phone?: string;
+  phone?: string;
   userType: UserType;
   establishmentId?: string | null;
   createdAt: Date;
@@ -20,7 +20,6 @@ export enum UserType {
   END_USER = 'end_user',
 }
 
-
 export interface Establishment {
   id: string;
   name: string;
@@ -32,48 +31,59 @@ export interface Establishment {
   isActive: boolean;
 }
 
-  export interface ServiceOrder {
+export interface ServiceOrder {
+  id: string;
+  orderNumber: string;
+  title?: string;
+  description: string;
+  priority: Priority;
+  status: ServiceOrderStatus;
+  establishmentId?: string;
+  establishmentName: string;
+  technicianId?: string;
+  technicianName: string;
+  technician?: {
     id: string;
-    orderNumber: string;
-    title?: string;
-    description: string;
-    priority: Priority;
-    status: ServiceOrderStatus;
-    establishmentId?: string;
-    establishmentName: string;
-    technicianId?: string;
-    technicianName: string;
-    technician?: {
-      id: string;
-      name: string;
-      email?: string;
-    };
-    user?: {
-      id: string;
-      name: string;
-      email?: string;
-    };
-    establishment?: {
-      id: string;
-      name: string;
-      address?: string;
-    };
-    userId?: string;
-    userName?: string;
+    name: string;
+    email?: string;
+  };
+  user?: {
+    id: string;
+    name: string;
+    email?: string;
+  };
+  establishment?: {
+    id: string;
+    name: string;
+    address?: string;
+  };
+  userId?: string;
+  userName?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt?: Date;
+  confirmedAt?: Date;
+  scheduledAt?: Date; // Novo campo para agendamento do atendimento
+  technicianNotes?: string;
+  userFeedback?: string;
+  userRating?: number;
+  cancellationReason?: {
+    reason: string;
     createdAt: Date;
-    updatedAt: Date;
-    completedAt?: Date;
-    confirmedAt?: Date;
-    scheduledAt?: Date; // Novo campo para agendamento do atendimento
-    technicianNotes?: string;
-    userFeedback?: string;
-    userRating?: number;
-    cancellationReason?: string;
-    feedback?: string;
-    useConfimed?: boolean;
-    startTime?: Date;
+  } | null;
+  pauseReason?: {
+    reason: string;
+    createdAt: Date;
+  } | null;
+  feedback?: string;
+  useConfimed?: boolean;
+  startTime?: Date;
   endTime?: Date;
-  }
+
+  cancelledBy?: { uid: string; name: string };
+  //pauseReason?: string;
+  pausedBy?: { uid: string; name: string };
+}
 
 export enum ServiceOrderStatus {
   OPEN = 'open',
@@ -82,13 +92,15 @@ export enum ServiceOrderStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   CONFIRMED = 'confirmed',
-  PENDING = 'pending'
+  PENDING = 'pending',
+  PAUSED = 'paused',
+  REOPENED = 'reopened',
 }
 
 export enum Priority {
   LOW = 'low',
   MEDIUM = 'medium',
-  HIGH = 'high'
+  HIGH = 'high',
 }
 
 export interface LoginRequest {
@@ -147,12 +159,9 @@ export interface AdminStats extends DashboardStats {
   activeUsers: number;
 }
 
-
 export interface AuthRequest extends Request {
   user?: AuthenticatedUser;
 }
-
-
 
 export interface AuthenticatedUser {
   uid: string;
@@ -163,6 +172,3 @@ export interface AuthenticatedUser {
   establishmentId?: string | null;
   createdAt?: Date;
 }
-
-
-

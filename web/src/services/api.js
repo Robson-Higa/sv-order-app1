@@ -109,7 +109,9 @@ export const apiService = {
   deleteServiceOrder: (id) => api.delete(`/service-orders/${id}`),
   assignTechnician: (id, technicianId) =>
     api.patch(`/service-orders/${id}/assign`, { technicianId }),
-  updateStatus: (id, status, notes) => api.patch(`/service-orders/${id}/status`, { status, notes }),
+  updateStatus: (orderId, { status, reason }) =>
+    api.patch(`/service-orders/${orderId}/status`, { status, reason }),
+
   cancelServiceOrder: (id, reason) => api.patch(`/service-orders/${id}/cancel`, { reason }),
   confirmCompletion: (id) => api.patch(`/service-orders/${id}/confirm`),
   addFeedback: (id, feedback, rating) =>

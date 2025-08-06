@@ -56,9 +56,14 @@ export const getStatusColor = (status) => {
     open: 'variant-warning',
     assigned: 'variant-info',
     in_progress: 'variant-secondary',
+    IN_PROGRESS: 'variant-secondary',
     completed: 'variant-success',
+    COMPLETED: 'variant-success',
     confirmed: 'variant-primary',
     cancelled: 'variant-destructive',
+    paused: 'variant-warning',
+    PAUSED: 'variant-warning',
+    reactivated: 'variant-info',
   };
   return colorMap[status] || 'variant-default';
 };
