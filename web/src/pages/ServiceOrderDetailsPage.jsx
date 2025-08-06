@@ -34,21 +34,26 @@ const ServiceOrderDetailsPage = () => {
   const loadOrderDetails = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getServiceOrderById(id);
-      if (response.order) {
-        setOrder(response.order);
-        // Pre-fill technician notes if they exist
-        if (response.order.technicianNotes) {
-          setTechnicianNotes(response.order.technicianNotes);
+      const response = await apiService.getServiceOrder(id);
+      console.log('API Response:', response); // Agora deve mostrar { serviceOrder: { ... } }
+
+      if (response?.serviceOrder) {
+        const orderData = response.serviceOrder;
+        setOrder(orderData);
+
+        if (orderData.technicianNotes) {
+          setTechnicianNotes(orderData.technicianNotes);
         }
-        // Check if the order is completed by technician and needs user confirmation
+
         if (
           user?.userType === UserType.END_USER &&
-          response.order.status === 'completed' &&
-          !response.order.confirmedAt
+          orderData.status === 'COMPLETED' &&
+          !orderData.confirmedAt
         ) {
           setShowConfirmationAlert(true);
         }
+      } else {
+        setError('Ordem de serviço não encontrada.');
       }
     } catch (err) {
       setError(err.message || 'Erro ao carregar detalhes da ordem de serviço.');
@@ -109,6 +114,10 @@ const ServiceOrderDetailsPage = () => {
       setLoading(false);
     }
   };
+
+  const createdAtDate = order.createdAt?._seconds
+    ? new Date(order.createdAt._seconds * 1000)
+    : null;
 
   const getStatusText = (status) => {
     switch (status) {
@@ -190,7 +199,7 @@ const ServiceOrderDetailsPage = () => {
           <CardTitle className="text-2xl">{order.title}</CardTitle>
           <p className="text-sm text-gray-500">
             Criado por: {order.userName} em{' '}
-            {format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+            {createdAtDate ? format(createdAtDate, 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '-'}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -229,14 +238,6 @@ const ServiceOrderDetailsPage = () => {
               <Label className="font-semibold">Concluído pelo Técnico em:</Label>
               <p className="text-gray-700">
                 {format(new Date(order.completedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-              </p>
-            </div>
-          )}
-          {order.confirmedAt && (
-            <div>
-              <Label className="font-semibold">Confirmado pelo Usuário em:</Label>
-              <p className="text-gray-700">
-                {format(new Date(order.confirmedAt), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
               </p>
             </div>
           )}

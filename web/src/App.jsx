@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ServiceOrdersPage from './pages/orders/ServiceOrdersPage';
+import ServiceOrderDetailsPage from './pages/ServiceOrderDetailsPage';
 import ServiceOrderCreatePage from './pages/ServiceOrderCreatePage';
 import UsersAdminPage from './pages/UsersAdminPage';
 import EstablishmentsPage from './pages/EstablishmentsPage';
@@ -44,6 +45,7 @@ const AppRoutes = () => {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/service-orders" element={<ServiceOrdersPage />} />
         <Route path="/service-orders/new" element={<ServiceOrderCreatePage />} />
+        <Route path="/service-orders/:id" element={<ServiceOrderDetailsPage />} />
         <Route path="/users" element={<UsersAdminPage />} />
         <Route path="/establishments" element={<EstablishmentsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
