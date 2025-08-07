@@ -9,9 +9,17 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Loader2, CheckCircle, XCircle, MessageSquare, Star } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, intervalToDuration, formatDuration } from 'date-fns';
+import { getStatusText, getPriorityText } from '@/types/index';
+import { formatDate } from '@/utils/dateUtils'; // se estiver em outro arquivo
 import { ptBR } from 'date-fns/locale';
 import '../App.css';
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return '-';
+  const date = new Date(timestamp.seconds * 1000);
+  return format(date, 'dd/MM/yyyy HH:mm');
+};
 
 const ServiceOrderDetailsPage = () => {
   const { id } = useParams();
@@ -35,7 +43,13 @@ const ServiceOrderDetailsPage = () => {
     try {
       setLoading(true);
       const response = await apiService.getServiceOrder(id);
-      console.log('API Response:', response); // Agora deve mostrar { serviceOrder: { ... } }
+      console.log('Campos importantes:', {
+        technicianNotes: response?.serviceOrder?.technicianNotes,
+        completedAt: response?.serviceOrder?.completedAt,
+        feedback: response?.serviceOrder?.feedback,
+        userRating: response?.serviceOrder?.userRating,
+        confirmedAt: response?.serviceOrder?.confirmedAt,
+      });
 
       if (response?.serviceOrder) {
         const orderData = response.serviceOrder;
@@ -115,10 +129,10 @@ const ServiceOrderDetailsPage = () => {
     }
   };
 
-  const createdAtDate =
-    order && order.createdAt && order.createdAt._seconds
-      ? new Date(order.createdAt._seconds * 1000)
-      : null;
+  const createdAtDate = formatDate(order?.createdAt);
+  const startedAtDate = formatDate(order?.startedAt);
+  const completedAtDate = formatDate(order?.completedAt);
+  const confirmedAtDate = formatDate(order?.confirmedAt);
 
   const getStatusText = (status) => {
     switch (status) {
@@ -199,35 +213,81 @@ const ServiceOrderDetailsPage = () => {
         <CardHeader>
           <CardTitle className="text-2xl">{order.title}</CardTitle>
           <p className="text-sm text-gray-500">
-            Criado por: {order.userName} em{' '}
-            {createdAtDate ? format(createdAtDate, 'dd/MM/yyyy HH:mm', { locale: ptBR }) : '-'}
+            Criado por: {order.userName} em {createdAtDate}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label className="font-semibold">Descrição:</Label>
-            <p className="text-gray-700">{order.description}</p>
+          <div className="space-y-2 mt-4">
+            <p>
+              <strong>Título:</strong> {order.title}
+            </p>
+            <p>
+              <strong>Descrição:</strong> {order.description}
+            </p>
+            <p>
+              <strong>Estabelecimento:</strong> {order.establishment?.name}
+            </p>
+            <p>
+              <strong>Data de Abertura:</strong> {startedAtDate}
+            </p>
+            <p>
+              <strong>Data de Finalização:</strong> {completedAtDate}
+            </p>
+            <p>
+              <strong>Tempo de Atendimento:</strong>{' '}
+              {order.startedAt?.seconds && order.completedAt?.seconds
+                ? formatDuration(
+                    intervalToDuration({
+                      start: new Date(order.startedAt.seconds * 1000),
+                      end: new Date(order.completedAt.seconds * 1000),
+                    }),
+                    { format: ['hours', 'minutes'] }
+                  )
+                : '-'}
+            </p>
+            <p>
+              <strong>Status:</strong> {getStatusText(order.status)}
+            </p>
+            <p>
+              <strong>Prioridade:</strong> {getPriorityText(order.priority)}
+            </p>
+            <p>
+              <strong>Serviço Executado:</strong> {order.technicianNotes || '-'}
+            </p>
+            <p>
+              <strong>Feedback do Usuário:</strong> {order.feedback || '-'}
+            </p>
           </div>
-          <div>
-            <Label className="font-semibold">Status:</Label>
-            <span
-              className={`ml-2 px-2 py-1 rounded-full text-sm font-medium ${order.status === 'confirmed' ? 'bg-green-100 text-green-800' : order.status === 'completed' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}
-            >
-              {getStatusText(order.status)}
-            </span>
-          </div>
-          <div>
-            <Label className="font-semibold">Prioridade:</Label>
-            <span
-              className={`ml-2 px-2 py-1 rounded-full text-sm font-medium ${order.priority === 'urgent' ? 'bg-red-100 text-red-800' : order.priority === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}
-            >
-              {order.priority.charAt(0).toUpperCase() + order.priority.slice(1)}
-            </span>
-          </div>
-          <div>
-            <Label className="font-semibold">Estabelecimento:</Label>
-            <p className="text-gray-700">{order.establishmentName}</p>
-          </div>
+          {order.status === 'PAUSED' || order.status === 'CANCELED' ? (
+            <p>
+              <strong>Motivo:</strong> {order.reason || '-'}
+            </p>
+          ) : null}
+
+          {order.completedAt && (
+            <p>
+              <strong>Data de Finalização:</strong> {confirmedAtDate}
+            </p>
+          )}
+
+          {order.startedAt && order.completedAt && (
+            <p>
+              <strong>Tempo de Atendimento:</strong>{' '}
+              {formatDistance(
+                new Date(order.startedAt.seconds * 1000),
+                new Date(order.completedAt.seconds * 1000),
+                { addSuffix: false }
+              )}
+            </p>
+          )}
+
+          <p>
+            <strong>Serviço Executado:</strong> {order.technicianNotes || '-'}
+          </p>
+          <p>
+            <strong>Feedback do Usuário:</strong> {order.feedback || '-'}
+          </p>
+
           {order.technicianName && (
             <div>
               <Label className="font-semibold">Técnico Atribuído:</Label>
