@@ -115,9 +115,10 @@ const ServiceOrderDetailsPage = () => {
     }
   };
 
-  const createdAtDate = order.createdAt?._seconds
-    ? new Date(order.createdAt._seconds * 1000)
-    : null;
+  const createdAtDate =
+    order && order.createdAt && order.createdAt._seconds
+      ? new Date(order.createdAt._seconds * 1000)
+      : null;
 
   const getStatusText = (status) => {
     switch (status) {

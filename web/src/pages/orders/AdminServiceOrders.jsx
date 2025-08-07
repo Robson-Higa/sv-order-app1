@@ -375,7 +375,11 @@ const AdminServiceOrders = () => {
             return dateB - dateA;
           })
           .map((order) => (
-            <Card key={order.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={order.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => navigate(`/service-orders/${order.id}`)}
+            >
               <CardContent className="p-6">
                 <div className="flex justify-between mb-4">
                   <div>
@@ -420,7 +424,10 @@ const AdminServiceOrders = () => {
                 </div>
 
                 {/* Botões de Ação */}
-                <div className="flex gap-3">
+                <div
+                  className="flex gap-3"
+                  onClick={(e) => e.stopPropagation()} // Impede navegação ao clicar nos botões
+                >
                   <Button
                     variant="outline"
                     size="sm"
@@ -429,7 +436,7 @@ const AdminServiceOrders = () => {
                       setSelectedOrder(order);
                       setModalAction(order.status === 'PAUSED' ? 'reactivate' : 'pause');
                     }}
-                    disabled={order.status === 'CANCELLED' || order.status === 'COMPLETED'} // Desativa se cancelada ou concluída
+                    disabled={order.status === 'CANCELLED' || order.status === 'COMPLETED'}
                   >
                     {order.status === 'PAUSED' ? (
                       <>
