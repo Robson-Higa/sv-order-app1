@@ -53,7 +53,7 @@ export const apiService = {
   getTechnicians: () => api.get('/users/technicians'),
   getEndUsers: () => api.get('/users/type/END_USER'),
   createUser: (data) => api.post('/users', data),
-  updateUser: (id, data) => api.patch(`/users/${id}`, data),
+  //updateUser: (id, data) => api.patch(`/users/${id}`, data),
   deleteUser: (id) => api.delete(`/users/${id}`),
   activateUser: (id) => api.patch(`/users/${id}/activate`),
 

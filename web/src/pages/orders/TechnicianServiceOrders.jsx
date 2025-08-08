@@ -13,6 +13,14 @@ import { getStatusText } from '../../types';
 
 import { updateServiceOrderStatus } from '@/services/api';
 
+export const ServiceOrderStatus = {
+  OPEN: 'open',
+  IN_PROGRESS: 'in_progress',
+  PAUSED: 'paused',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+};
+
 const TechnicianServiceOrders = () => {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -49,13 +57,11 @@ const TechnicianServiceOrders = () => {
 
   const handleStartOrder = async (id) => {
     try {
-      const order = await apiService.getServiceOrder(id);
+      // Sempre tenta se auto-atribuir — backend ignora se já for o técnico
+      await apiService.assignSelfToOrder(id);
 
-      if (!order.technicianName) {
-        await apiService.assignSelfToOrder(id);
-      }
-
-      await apiService.updateStatus(id, 'IN_PROGRESS');
+      // Depois, atualiza o status
+      await apiService.updateStatus(id, { status: ServiceOrderStatus.IN_PROGRESS });
 
       toast.success('Atendimento iniciado!');
       await loadOrders();

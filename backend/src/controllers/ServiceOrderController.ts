@@ -313,6 +313,10 @@ export class ServiceOrderController {
       const isTechnician = user.userType === UserType.TECHNICIAN;
       const isEndUser = user.userType === UserType.END_USER;
 
+      console.log('status:', status);
+      console.log('isTechnician:', isTechnician);
+      console.log('isAdmin:', isAdmin);
+
       if (!isAdmin) {
         if (isTechnician) {
           const allowed = [
