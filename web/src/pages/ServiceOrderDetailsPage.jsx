@@ -82,11 +82,13 @@ const ServiceOrderDetailsPage = () => {
 
     setLoading(true);
     try {
-      await apiService.updateServiceOrder(id, {
+      await apiService.updateStatus(id, {
         status: 'completed',
-        technicianNotes: technicianNotes.trim(),
-        completedAt: new Date().toISOString(),
+        technicianNotes: 'Resolvido com sucesso',
+        startTime: new Date(),
+        endTime: new Date(),
       });
+
       await loadOrderDetails(); // Reload to update status and show confirmation alert
       setError('');
       alert('Serviço concluído pelo técnico! O usuário final será notificado para confirmar.');

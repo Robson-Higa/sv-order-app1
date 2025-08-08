@@ -74,10 +74,11 @@ const TechnicianServiceOrders = () => {
 
   const handleFinishOrder = async (id, { startTime, endTime, description }) => {
     try {
-      await apiService.updateStatus(id, 'COMPLETED', {
+      await apiService.updateStatus(id, {
+        status: 'completed',
         technicianNotes: description,
-        startTime,
-        endTime,
+        startTime: new Date(),
+        endTime: new Date(),
       });
 
       // Gerar PDF

@@ -607,7 +607,11 @@ export class ServiceOrderController {
             updates.completedAt = new Date();
           }
         }
+
         if (updateData.technicianNotes) updates.technicianNotes = updateData.technicianNotes;
+
+        if (updateData.startTime) updates.startTime = new Date(updateData.startTime);
+        if (updateData.endTime) updates.endTime = new Date(updateData.endTime);
       } else if (req.user?.userType === UserType.END_USER) {
         if (updateData.userFeedback) updates.userFeedback = updateData.userFeedback;
         if (updateData.userRating) updates.userRating = updateData.userRating;

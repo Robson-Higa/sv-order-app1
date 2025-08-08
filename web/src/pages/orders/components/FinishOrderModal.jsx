@@ -30,7 +30,10 @@ const FinishOrderModal = ({ order, onClose, onConfirm }) => {
             <strong>Cliente:</strong> {order.userName}
           </p>
           <p>
-            <strong>Estabelecimento:</strong> {order.establishment?.name}
+            <strong>Estabelecimento:</strong> {order.establishmentName}
+          </p>
+          <p>
+            <strong>Setor:</strong> {order.sector}
           </p>
         </div>
 

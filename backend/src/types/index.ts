@@ -134,6 +134,8 @@ export interface UpdateServiceOrderRequest {
   technicianNotes?: string;
   userFeedback?: string;
   userRating?: number;
+  startTime?: Date;
+  endTime?: Date;
 }
 
 export interface DashboardStats {
