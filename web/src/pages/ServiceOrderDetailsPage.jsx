@@ -127,6 +127,10 @@ const ServiceOrderDetailsPage = () => {
   const startedAtDate = formatDate(order?.startedAt);
   const completedAtDate = formatDate(order?.completedAt);
   const confirmedAtDate = formatDate(order?.confirmedAt);
+  const cancellationDate = order?.cancellationReason?.createdAt
+    ? formatDate(order.cancellationReason.createdAt)
+    : '-';
+  const pauseDate = order?.updatedAt ? formatDate(order.updatedAt) : '-';
 
   console.log('order.createdAt:', order?.createdAt);
   console.log('started:', startedAtDate);
@@ -242,19 +246,11 @@ const ServiceOrderDetailsPage = () => {
                   )
                 : '-'}
             </p>
-            {order.status === 'cancelled' && order.cancellationReason && (
+            {order.status?.toLowerCase() === 'cancelled' && order.cancellationReason && (
               <div className="mb-4">
-                <Label>Motivo do cancelamento</Label>
-                <p className="text-sm text-red-700">{order.cancellationReason.reason}</p>
-                <p className="text-xs text-gray-500">
-                  Cancelado em:{' '}
-                  {order.cancellationReason.createdAt?.seconds
-                    ? format(
-                        new Date(order.cancellationReason.createdAt.seconds * 1000),
-                        'dd/MM/yyyy HH:mm'
-                      )
-                    : '-'}
-                </p>
+                <Label className="inline-block mr-2">Motivo do cancelamento:</Label>
+                <span className="text-sm text-red-700">{order.cancellationReason.reason}</span>
+                <p className="text-xs text-gray-500 mt-1">Cancelado em: {cancellationDate}</p>
               </div>
             )}
 
@@ -268,11 +264,15 @@ const ServiceOrderDetailsPage = () => {
               <strong>Feedback do Usuário:</strong> {order.feedback || '-'}
             </p>
           </div>
-          {order.status === 'PAUSED' || order.status === 'CANCELED' ? (
-            <p>
-              <strong>Motivo:</strong> {order.reason || '-'}
-            </p>
-          ) : null}
+          {order.status?.toLowerCase() === 'paused' && (
+            <div className="mb-4">
+              <Label className="inline-block mr-2">Motivo da pausa:</Label>
+              <span className="text-sm text-yellow-700">{order.pauseReason}</span>
+              <p className="text-xs text-gray-500 mt-1">
+                Pausado por: {order.pausedBy?.name || '-'} em {pauseDate}
+              </p>
+            </div>
+          )}
 
           {order.completedAt && (
             <p>
