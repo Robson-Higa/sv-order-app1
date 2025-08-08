@@ -166,3 +166,9 @@ export async function updateServiceOrderStatus(orderId, status, extraData = {}) 
     throw error.response?.data || { error: 'Erro ao atualizar status da ordem' };
   }
 }
+
+// Exemplo de função no apiService.js
+export async function getServiceOrderById(id) {
+  const response = await api.get(`/service-orders/${id}`);
+  return response.data;
+}

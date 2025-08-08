@@ -122,12 +122,12 @@ export class ServiceOrderController {
       if (req.user?.userType === UserType.END_USER && serviceOrder.userId !== req.user.uid) {
         return res.status(403).json({ error: 'Acesso negado' });
       }
-      if (
-        req.user?.userType === UserType.TECHNICIAN &&
-        serviceOrder.technicianId !== req.user.uid
-      ) {
-        return res.status(403).json({ error: 'Acesso negado' });
-      }
+      // if (
+      //   req.user?.userType === UserType.TECHNICIAN &&
+      //   serviceOrder.technicianId !== req.user.uid
+      // ) {
+      //   return res.status(403).json({ error: 'Acesso negado' });
+      // }
 
       // Buscar informações adicionais
       const [userDoc, technicianDoc, establishmentDoc] = await Promise.all([
@@ -381,7 +381,12 @@ export class ServiceOrderController {
       }
 
       // ✅ Técnico assume a OS se iniciar
-      if (!serviceOrder.technicianId && status === ServiceOrderStatus.IN_PROGRESS && isTechnician) {
+      if (
+        !serviceOrder.technicianId &&
+        serviceOrder.status === ServiceOrderStatus.OPEN &&
+        status === ServiceOrderStatus.IN_PROGRESS &&
+        isTechnician
+      ) {
         updates.technicianId = user.uid;
         updates.technicianName = user.name;
       }
@@ -434,6 +439,7 @@ export class ServiceOrderController {
       if (!user) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
+      console.log('📌 Dados recebidos para assign-self:', req.user, req.params.id);
 
       const serviceOrderDoc = db.collection('serviceOrders').doc(id);
       const serviceOrderSnapshot = await serviceOrderDoc.get();

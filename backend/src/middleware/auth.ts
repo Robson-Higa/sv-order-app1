@@ -7,7 +7,6 @@ export interface AuthRequest extends Request {
   user?: User;
 }
 
-
 export const authenticateToken = async (
   req: AuthRequest,
   res: Response,
@@ -39,19 +38,18 @@ export const authenticateToken = async (
     const userData = userDoc.data() as User;
 
     // Preenche req.user com dados completos
-   req.user = {
-  uid: decoded.uid,
-  email: decoded.email,
-  userType: decoded.userType,
-  establishmentId: userData.establishmentId,
-  name: userData.name,
-  phone: userData.phone,
-  createdAt: userData.createdAt,
-  updatedAt: userData.updatedAt,
-  isActive: userData.isActive,
-  // outros campos que o User exigir
-};
-
+    req.user = {
+      uid: decoded.uid,
+      email: decoded.email,
+      userType: decoded.userType,
+      establishmentId: userData.establishmentId,
+      name: userData.name,
+      phone: userData.phone,
+      createdAt: userData.createdAt,
+      updatedAt: userData.updatedAt,
+      isActive: userData.isActive,
+      // outros campos que o User exigir
+    };
 
     //console.log('[authenticateToken] Usuário autenticado:', req.user);
 
@@ -61,44 +59,43 @@ export const authenticateToken = async (
   }
 };
 
-export const requireRole = (roles: UserType[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
-  
-//console.log('Comparando:', roles, 'com', req.user?.userType);
-
-    if (!req.user) {
-      res.status(401).json({ error: 'Usuário não autenticado' });
-      return;
-    }
-
-    if (!roles.includes(req.user.userType as UserType)) {
-      res.status(403).json({ error: 'Acesso negado. Permissões insuficientes.' });
-      return;
-    }
-
-    next();
-  };
-
-  
-};
-export const authorizeRoles = (...roles: UserType[]) => {
+export const requireRole = (...roles: UserType[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ error: 'Usuário não autenticado' });
       return;
     }
 
-    if (!roles.includes(req.user.userType as UserType)) {
+    if (!roles.includes(req.user.userType)) {
       res.status(403).json({ error: 'Acesso negado. Permissões insuficientes.' });
       return;
     }
-    
 
     next();
   };
 };
 
-export const requireAdmin = requireRole([UserType.ADMIN]);
-export const requireTechnician = requireRole([UserType.TECHNICIAN, UserType.ADMIN]);
-export const requireEndUser = requireRole([UserType.END_USER, UserType.ADMIN]);
+// Exemplo de uso:
+export const requireAdmin = requireRole(UserType.ADMIN);
+export const requireTechnician = requireRole(UserType.TECHNICIAN, UserType.ADMIN);
+export const requireEndUser = requireRole(UserType.END_USER, UserType.ADMIN);
 
+// export const authorizeRoles = (...roles: UserType[]) => {
+//   return (req: AuthRequest, res: Response, next: NextFunction): void => {
+//     if (!req.user) {
+//       res.status(401).json({ error: 'Usuário não autenticado' });
+//       return;
+//     }
+
+//     if (!roles.includes(req.user.userType as UserType)) {
+//       res.status(403).json({ error: 'Acesso negado. Permissões insuficientes.' });
+//       return;
+//     }
+
+//     next();
+//   };
+// };
+
+// export const requireAdmin = requireRole([UserType.ADMIN]);
+// export const requireTechnician = requireRole([UserType.TECHNICIAN, UserType.ADMIN]);
+// export const requireEndUser = requireRole([UserType.END_USER, UserType.ADMIN]);

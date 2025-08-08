@@ -49,10 +49,14 @@ const TechnicianServiceOrders = () => {
 
   const handleStartOrder = async (id) => {
     try {
-      // Primeiro, atribui a ordem ao técnico logado
-      await apiService.assignSelfToOrder(id);
-      // Depois, altera o status para "IN_PROGRESS"
+      const order = await apiService.getServiceOrder(id);
+
+      if (!order.technicianName) {
+        await apiService.assignSelfToOrder(id);
+      }
+
       await apiService.updateStatus(id, 'IN_PROGRESS');
+
       toast.success('Atendimento iniciado!');
       await loadOrders();
     } catch (error) {
