@@ -344,8 +344,14 @@ export class ServiceOrderController {
 
       // ✅ Monta updates
       const updates: Partial<ServiceOrder> = {
-        updatedAt: new Date(),
         status,
+        updatedAt: new Date(),
+        ...(status === 'CANCELLED' && {
+          cancellationReason: {
+            reason,
+            createdAt: new Date(),
+          },
+        }),
       };
 
       if (technicianNotes !== undefined) updates.technicianNotes = technicianNotes;
@@ -359,7 +365,10 @@ export class ServiceOrderController {
 
       // Define quem cancelou/pausou
       if (status === ServiceOrderStatus.CANCELLED) {
-        updates.cancellationReason = reason ?? '';
+        updates.cancellationReason = {
+          reason,
+          createdAt: new Date(),
+        };
         updates.cancelledBy = { uid: user.uid, name: user.name ?? 'Desconhecido' };
       }
 
@@ -680,6 +689,8 @@ export class ServiceOrderController {
     try {
       const { id } = req.params;
       const { reason } = req.body;
+
+      console.log('Cancelamento recebido:', { id, reason });
 
       const serviceOrderDoc = await db.collection('serviceOrders').doc(id);
       const serviceOrderSnapshot = await serviceOrderDoc.get();

@@ -43,7 +43,13 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
     async function fetchTitles() {
       try {
         const res = await apiService.getTitles();
-        setTitles(res.titles || []);
+        // Garanta que cada title tenha id (se seu backend já envia, ok)
+        // Se não enviar, aqui você pode mapear e criar um id baseado em algo único
+        const titlesWithId = (res.titles || []).map((title) => ({
+          id: title.id || title.title, // fallback para title se não houver id
+          ...title,
+        }));
+        setTitles(titlesWithId);
       } catch (err) {
         console.error('Erro ao buscar títulos:', err);
       }
@@ -64,7 +70,14 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
       const current = establishment.establishments.find((e) => e.id === establishmentId);
       if (current) {
         setEstablishmentName(current.name);
-        await fetchSectorsByEstablishment(establishmentId);
+
+        // Ajustar setores para garantir id único
+        const sectorsWithId = (current.sectors || []).map((sector) => ({
+          id: sector.id || sector.name,
+          ...sector,
+        }));
+
+        setSectors(sectorsWithId);
       }
     } catch (err) {
       console.error('Erro ao buscar nome do estabelecimento:', err);
@@ -261,6 +274,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
         <Autocomplete
           options={sectors}
           getOptionLabel={(option) => option.name || ''}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
           value={sectors.find((s) => s.name === sector) || null}
           onChange={(_, newValue) => setSector(newValue ? newValue.name : '')}
           renderInput={(params) => (
@@ -288,6 +302,8 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
             <option value="">Não atribuir</option>
             {technicians.map((tech) => (
               <option key={tech.id} value={tech.id}>
+                {' '}
+                {/* use tech.id aqui */}
                 {tech.name}
               </option>
             ))}

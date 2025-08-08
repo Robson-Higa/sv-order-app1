@@ -15,12 +15,6 @@ import { formatDate } from '@/utils/dateUtils'; // se estiver em outro arquivo
 import { ptBR } from 'date-fns/locale';
 import '../App.css';
 
-const formatDate = (timestamp) => {
-  if (!timestamp) return '-';
-  const date = new Date(timestamp.seconds * 1000);
-  return format(date, 'dd/MM/yyyy HH:mm');
-};
-
 const ServiceOrderDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -134,6 +128,9 @@ const ServiceOrderDetailsPage = () => {
   const completedAtDate = formatDate(order?.completedAt);
   const confirmedAtDate = formatDate(order?.confirmedAt);
 
+  console.log('order.createdAt:', order?.createdAt);
+  console.log('started:', startedAtDate);
+
   const getStatusText = (status) => {
     switch (status) {
       case 'open':
@@ -245,9 +242,22 @@ const ServiceOrderDetailsPage = () => {
                   )
                 : '-'}
             </p>
-            <p>
-              <strong>Status:</strong> {getStatusText(order.status)}
-            </p>
+            {order.status === 'cancelled' && order.cancellationReason && (
+              <div className="mb-4">
+                <Label>Motivo do cancelamento</Label>
+                <p className="text-sm text-red-700">{order.cancellationReason.reason}</p>
+                <p className="text-xs text-gray-500">
+                  Cancelado em:{' '}
+                  {order.cancellationReason.createdAt?.seconds
+                    ? format(
+                        new Date(order.cancellationReason.createdAt.seconds * 1000),
+                        'dd/MM/yyyy HH:mm'
+                      )
+                    : '-'}
+                </p>
+              </div>
+            )}
+
             <p>
               <strong>Prioridade:</strong> {getPriorityText(order.priority)}
             </p>
