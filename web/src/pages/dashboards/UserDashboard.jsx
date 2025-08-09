@@ -52,6 +52,14 @@ export default function UserDashboard() {
     completed: 'Concluída',
     confirmed: 'Confirmada',
     cancelled: 'Cancelada',
+    paused: 'Pausado',
+    OPEN: 'Aberta',
+    ASSIGNED: 'Atribuída',
+    IN_PROGRESS: 'Em Andamento',
+    COMPLETED: 'Concluída',
+    CONFIRMED: 'Confirmada',
+    CANCELLED: 'Cancelada',
+    PAUSED: 'Pausado',
   };
 
   return (

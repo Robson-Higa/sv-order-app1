@@ -71,13 +71,18 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
       if (current) {
         setEstablishmentName(current.name);
 
-        // Ajustar setores para garantir id único
-        const sectorsWithId = (current.sectors || []).map((sector) => ({
+        const response = await apiService.getSectors(establishmentId);
+        const sectorsWithId = (response.sectors || []).map((sector) => ({
           id: sector.id || sector.name,
           ...sector,
         }));
 
         setSectors(sectorsWithId);
+
+        setSectors(sectorsWithId);
+        console.log('Estabelecimentos:', establishments);
+        console.log('Estabelecimento atual:', current);
+        console.log('Setores carregados:', sectors);
       }
     } catch (err) {
       console.error('Erro ao buscar nome do estabelecimento:', err);
@@ -273,10 +278,25 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
         <label className="block font-medium mb-1">Setor *</label>
         <Autocomplete
           options={sectors}
-          getOptionLabel={(option) => option.name || ''}
-          isOptionEqualToValue={(option, value) => option.id === value.id}
-          value={sectors.find((s) => s.name === sector) || null}
-          onChange={(_, newValue) => setSector(newValue ? newValue.name : '')}
+          freeSolo
+          getOptionLabel={(option) => {
+            if (typeof option === 'string') return option; // quando usuário digita
+            return option?.name || ''; // mostrar nome
+          }}
+          isOptionEqualToValue={(option, value) => {
+            if (typeof value === 'string') return option.name === value;
+            return option.id === value.id;
+          }}
+          value={typeof sector === 'string' ? sectors.find((s) => s.id === sector) || sector : null}
+          onChange={(_, newValue) => {
+            if (typeof newValue === 'string') {
+              setSector(newValue); // novo setor digitado
+            } else if (newValue && newValue.id) {
+              setSector(newValue.id); // guardar só id no estado
+            } else {
+              setSector('');
+            }
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -285,7 +305,7 @@ const ServiceOrderForm = ({ onSuccess, onCancel, defaultValues = {} }) => {
               size="small"
             />
           )}
-          disabled={loading || sectors.length === 0}
+          disabled={loading}
         />
       </div>
 
