@@ -1,0 +1,20 @@
+/* Estilos específicos da aplicação */
+
+/* Variáveis para gráficos e visualizações */
+:root {
+  --chart-1: var(--blue-600);
+  --chart-2: var(--blue-400);
+  --chart-3: var(--blue-800);
+  --chart-4: var(--success);
+  --chart-5: var(--warning);
+}
+
+.dark {
+  --chart-1: var(--blue-500);
+  --chart-2: var(--blue-300);
+  --chart-3: var(--blue-700);
+  --chart-4: var(--success);
+  --chart-5: var(--warning);
+}
+
+/* Estilos específicos da aplicação que não estão no global.css */
