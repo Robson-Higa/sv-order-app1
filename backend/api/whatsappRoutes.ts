@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import whatsappService from '../services/whatsappService';
-import { db } from '../config/firebase';
-import { ServiceOrderStatus } from '../types';
+import whatsappService from '../src/services/whatsappService';
+import { db } from '../src/config/firebase';
+import { ServiceOrderStatus } from '../src/types';
 
 const router = Router();
 
@@ -65,7 +65,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
 router.get('/webhook', (req: Request, res: Response) => {
   // Verificar token de verificação
   const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN || 'sv-order-app-verify-token';
-  
+
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
@@ -105,7 +105,7 @@ async function processTextMessage(message: any, contact: any) {
   if (text.toLowerCase().includes('status') || text.toLowerCase().includes('andamento')) {
     // Extrair possível número da ordem
     const orderNumberMatch = text.match(/#(\d+)/) || text.match(/(\d{6})/); // Busca #123456 ou 123456
-    
+
     if (orderNumberMatch) {
       const orderNumber = orderNumberMatch[1];
       await sendOrderStatus(from, orderNumber);
@@ -139,7 +139,7 @@ async function processButtonResponse(message: any, contact: any) {
   // Processar com base no payload do botão
   if (buttonId.startsWith('feedback_')) {
     const orderId = buttonId.replace('feedback_', '');
-    
+
     // Enviar link para feedback
     await whatsappService.sendCustomMessage(
       from,
@@ -162,13 +162,16 @@ async function processInteractiveResponse(message: any, contact: any) {
   // Processar com base no ID do botão
   if (buttonReply.id.startsWith('rate_')) {
     const [_, orderId, rating] = buttonReply.id.split('_');
-    
+
     // Registrar avaliação
     try {
-      await db.collection('serviceOrders').doc(orderId).update({
-        rating: parseInt(rating),
-        feedbackAt: new Date()
-      });
+      await db
+        .collection('serviceOrders')
+        .doc(orderId)
+        .update({
+          rating: parseInt(rating),
+          feedbackAt: new Date(),
+        });
 
       await whatsappService.sendCustomMessage(
         from,
@@ -190,7 +193,8 @@ async function processInteractiveResponse(message: any, contact: any) {
 async function sendOrderStatus(phoneNumber: string, orderNumber: string) {
   try {
     // Buscar ordem pelo número
-    const ordersSnapshot = await db.collection('serviceOrders')
+    const ordersSnapshot = await db
+      .collection('serviceOrders')
       .where('orderNumber', '==', orderNumber)
       .limit(1)
       .get();
@@ -219,7 +223,7 @@ async function sendOrderStatus(phoneNumber: string, orderNumber: string) {
     const statusText = statusMap[order.status] || order.status;
     const createdDate = new Date(order.createdAt.toDate()).toLocaleDateString('pt-BR');
     let updatedDate = 'N/A';
-    
+
     if (order.updatedAt) {
       updatedDate = new Date(order.updatedAt.toDate()).toLocaleDateString('pt-BR');
     }
@@ -228,11 +232,11 @@ async function sendOrderStatus(phoneNumber: string, orderNumber: string) {
     await whatsappService.sendCustomMessage(
       phoneNumber,
       `📋 *Ordem de Serviço #${order.orderNumber}*\n\n` +
-      `*Título:* ${order.title}\n` +
-      `*Status:* ${statusText}\n` +
-      `*Criada em:* ${createdDate}\n` +
-      `*Última atualização:* ${updatedDate}\n\n` +
-      `Para mais detalhes, acesse nosso aplicativo.`
+        `*Título:* ${order.title}\n` +
+        `*Status:* ${statusText}\n` +
+        `*Criada em:* ${createdDate}\n` +
+        `*Última atualização:* ${updatedDate}\n\n` +
+        `Para mais detalhes, acesse nosso aplicativo.`
     );
   } catch (error) {
     console.error('Erro ao buscar status da ordem:', error);

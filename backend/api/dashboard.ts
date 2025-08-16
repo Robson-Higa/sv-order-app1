@@ -1,6 +1,6 @@
 import express from 'express';
-import { DashboardController } from '../controllers/DashboardController';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { DashboardController } from '../src/controllers/DashboardController';
+import { authenticateToken, requireAdmin } from '../src/middleware/auth';
 
 const router = express.Router();
 const dashboardController = new DashboardController();
@@ -19,4 +19,3 @@ router.get('/recent-orders', dashboardController.getRecentOrders);
 router.get('/reports', requireAdmin, dashboardController.getReports);
 
 export default router;
-

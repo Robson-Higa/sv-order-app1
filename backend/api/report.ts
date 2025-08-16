@@ -1,7 +1,7 @@
 import express from 'express';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
-import { ReportController } from '../controllers/ReportController';
-import { updateTechnicianNames } from '../controllers/updateTechnicianName';    
+import { authenticateToken, requireAdmin } from '../src/middleware/auth';
+import { ReportController } from '../src/controllers/ReportController';
+import { updateTechnicianNames } from '../src/controllers/updateTechnicianName';
 
 const router = express.Router();
 const reportController = new ReportController();

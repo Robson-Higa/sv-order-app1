@@ -1,7 +1,7 @@
 import express from 'express';
-import { UserController } from '../controllers/UserController';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
-import multer from "multer";
+import { UserController } from '../src/controllers/UserController';
+import { authenticateToken, requireAdmin } from '../src/middleware/auth';
+import multer from 'multer';
 
 const router = express.Router();
 const userController = new UserController();
@@ -29,7 +29,6 @@ router.patch('/:id', requireAdmin, userController.updateUser);
 router.delete('/:id', requireAdmin, userController.deleteUser);
 
 // Avatar upload
-router.post("/avatar", upload.single("file"), userController.uploadAvatar.bind(userController));
+router.post('/avatar', upload.single('file'), userController.uploadAvatar.bind(userController));
 
 export default router;
-
