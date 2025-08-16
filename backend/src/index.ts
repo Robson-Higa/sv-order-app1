@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 
 // Importar rotas
-import authRoutes from '../src/api/auth';
+import authRoutes from '../src/api/authRoutes';
 import userRoutes from '../src/api/users';
 import establishmentRoutes from '../src/api/establishments';
 import serviceOrderRoutes from '../src/api/serviceOrders';

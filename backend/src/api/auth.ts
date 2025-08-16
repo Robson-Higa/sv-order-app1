@@ -1,96 +1,74 @@
-import { validationResult } from 'express-validator';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import { AuthController } from '../controllers/AuthController';
-import { validateLoginWithIdToken, validateRegister } from '../middleware/validation';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
 
 const authController = new AuthController();
 
-// Função auxiliar para rodar arrays de ValidationChain do express-validator
-async function runValidators(validators: any[], req: any, res: any) {
-  for (const validator of validators) {
-    await validator.run(req); // req como any para compatibilidade Next.js
+/** Validações customizadas para serverless */
+function validateLoginBody(req: VercelRequest) {
+  const { idToken } = req.body || {};
+  if (!idToken || typeof idToken !== 'string') {
+    return { valid: false, errors: [{ msg: 'idToken ausente ou inválido' }] };
   }
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    res.status(400).json({ errors: errors.array() });
+  return { valid: true, errors: [] };
+}
+
+function validateRegisterBody(req: VercelRequest) {
+  const { email, password, name } = req.body || {};
+  const errors: { msg: string }[] = [];
+
+  if (!email || typeof email !== 'string') errors.push({ msg: 'Email ausente ou inválido' });
+  if (!password || typeof password !== 'string' || password.length < 6)
+    errors.push({ msg: 'Senha inválida (mínimo 6 caracteres)' });
+  if (!name || typeof name !== 'string') errors.push({ msg: 'Nome ausente ou inválido' });
+
+  return { valid: errors.length === 0, errors };
+}
+
+async function authenticate(req: VercelRequest, res: VercelResponse) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    res.status(401).json({ error: 'Token ausente' });
+    return null;
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  try {
+    const user = await authController.verifyTokenString(token); // ✅ usar verifyTokenString
+    return user;
+  } catch (err) {
+    res.status(401).json({ error: 'Token inválido ou expirado' });
+    return null;
+  }
+}
+
+/** Middleware para checar admin */
+async function requireAdmin(user: any, res: VercelResponse) {
+  if (!user?.isAdmin) {
+    res.status(403).json({ error: 'Acesso negado: apenas administradores' });
     return false;
   }
   return true;
 }
 
-// Handler serverless
-export default async function handler(req: any, res: any) {
-  const { method, url } = req;
+export default class AuthHandler {
+  async handler(req: VercelRequest, res: VercelResponse) {
+    const { method, url } = req;
 
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', 'https://SEU-FRONTEND.vercel.app');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  try {
-    // ROTAS PÚBLICAS
     if (method === 'POST' && url?.endsWith('/login')) {
-      const valid = await runValidators(validateLoginWithIdToken, req, res);
-      if (!valid) return;
-      return authController.login(req, res);
-    }
+      try {
+        // Adaptar VercelRequest para algo compatível com Express
+        const expressLikeReq = {
+          body: req.body,
+          headers: req.headers,
+        } as any;
 
-    if (method === 'POST' && url?.endsWith('/register')) {
-      const valid = await runValidators(validateRegister, req, res);
-      if (!valid) return;
-      return authController.register(req, res);
+        await authController.login(expressLikeReq, res as any);
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro interno do servidor' });
+      }
+    } else {
+      res.status(405).json({ error: 'Método não permitido' });
     }
-
-    if (method === 'POST' && url?.endsWith('/forgot-password')) {
-      return authController.forgotPassword(req, res);
-    }
-
-    if (method === 'POST' && url?.endsWith('/reset-password')) {
-      return authController.resetPassword(req, res);
-    }
-
-    // ROTAS PROTEGIDAS
-    if (method === 'POST' && url?.endsWith('/logout')) {
-      return authenticateToken(req, res, async () => authController.logout(req, res));
-    }
-
-    if (method === 'GET' && url?.endsWith('/me')) {
-      return authenticateToken(req, res, async () => authController.getCurrentUser(req, res));
-    }
-
-    if (method === 'PUT' && url?.endsWith('/change-password')) {
-      return authenticateToken(req, res, async () => authController.changePassword(req, res));
-    }
-
-    // ROTAS ADMINISTRATIVAS
-    if (method === 'POST' && url?.endsWith('/register-admin')) {
-      return authenticateToken(req, res, async () =>
-        requireAdmin(req, res, async () => {
-          const valid = await runValidators(validateRegister, req, res);
-          if (!valid) return;
-          return authController.registerAdmin(req, res);
-        })
-      );
-    }
-
-    if (method === 'POST' && url?.endsWith('/register-technician')) {
-      return authenticateToken(req, res, async () =>
-        requireAdmin(req, res, async () => {
-          const valid = await runValidators(validateRegister, req, res);
-          if (!valid) return;
-          return authController.registerTechnician(req, res);
-        })
-      );
-    }
-
-    res.status(404).json({ error: 'Rota não encontrada' });
-  } catch (err: any) {
-    console.error(err);
-    res.status(500).json({ error: err.message || 'Erro no servidor' });
   }
 }

@@ -1,112 +1,125 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { auth, db } from '../config/firebase';
 import { User, UserType, LoginRequest, RegisterRequest, AuthRequest } from '../types';
-import { hashPassword, comparePassword, generateToken, sanitizeUser, generateId } from '../utils/helpers';
+import {
+  hashPassword,
+  comparePassword,
+  generateToken,
+  sanitizeUser,
+  generateId,
+} from '../utils/helpers';
 
 export class AuthController {
-async login(req: Request, res: Response) {
-  
-  try {
-    const { idToken } = req.body;
-console.log('Login recebido, idToken:', idToken);
+  async login(req: Request, res: Response) {
+    try {
+      const { idToken } = req.body;
+      console.log('Login recebido, idToken:', idToken);
 
-    if (!idToken) {
-      return res.status(400).json({ error: 'Token de autenticação ausente' });
+      if (!idToken) {
+        return res.status(400).json({ error: 'Token de autenticação ausente' });
+      }
+
+      const decodedToken = await auth.verifyIdToken(idToken);
+      const { uid, email } = decodedToken;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Token inválido: email não encontrado' });
+      }
+
+      const usersRef = db.collection('users');
+      const snapshot = await usersRef.where('email', '==', email).get();
+
+      if (snapshot.empty) {
+        return res.status(404).json({ error: 'Usuário não encontrado' });
+      }
+
+      const userDoc = snapshot.docs[0];
+      const userData = userDoc.data() as User;
+
+      if (!userData.isActive) {
+        return res
+          .status(403)
+          .json({ error: 'Conta desativada. Entre em contato com o administrador.' });
+      }
+
+      const token = generateToken(userData);
+
+      await userDoc.ref.update({
+        lastLogin: new Date(),
+        updatedAt: new Date(),
+      });
+
+      return res.json({
+        message: 'Login realizado com sucesso',
+        token,
+        user: sanitizeUser(userData),
+      });
+    } catch (error) {
+      console.error('Erro no login com Firebase ID Token:', error);
+      return res.status(401).json({ error: 'Token inválido ou expirado' });
     }
-
-    const decodedToken = await auth.verifyIdToken(idToken);
-const { uid, email } = decodedToken;
-
-
-    if (!email) {
-      return res.status(400).json({ error: 'Token inválido: email não encontrado' });
-    }
-
-    const usersRef = db.collection('users');
-    const snapshot = await usersRef.where('email', '==', email).get();
-
-    if (snapshot.empty) {
-      return res.status(404).json({ error: 'Usuário não encontrado' });
-    }
-
-    const userDoc = snapshot.docs[0];
-    const userData = userDoc.data() as User;
-
-    if (!userData.isActive) {
-      return res.status(403).json({ error: 'Conta desativada. Entre em contato com o administrador.' });
-    }
-
-    const token = generateToken(userData);
-
-    await userDoc.ref.update({
-      lastLogin: new Date(),
-      updatedAt: new Date()
-    });
-
-    return res.json({
-      message: 'Login realizado com sucesso',
-      token,
-      user: sanitizeUser(userData)
-    });
-
-  } catch (error) {
-    console.error('Erro no login com Firebase ID Token:', error);
-    return res.status(401).json({ error: 'Token inválido ou expirado' });
   }
-}
 
-async register(req: Request, res: Response) {
-  try {
-    console.log("Dados recebidos no register:", req.body);
-
-    const { idToken, name, userType, phone, establishmentId } = req.body;
-
-    if (!idToken || !name || !userType) {
-      return res.status(400).json({ error: 'Dados obrigatórios ausentes' });
-    }
-
-    const decodedToken = await auth.verifyIdToken(idToken);
-    const { uid, email } = decodedToken;
-
-    if (!email) {
-      return res.status(400).json({ error: 'Email inválido no token' });
-    }
-
-    const userDoc = await db.collection('users').doc(uid).get();
-    if (userDoc.exists) {
-      return res.status(400).json({ error: 'Usuário já existe' });
-    }
-
-    const userData: User = {
-      uid,
-      email,
-      name,
-      userType,
-      phone,
-      establishmentId: establishmentId || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      isActive: true
-    };
-
-    await db.collection('users').doc(uid).set(userData);
-
-    return res.status(201).json({
-      message: 'Usuário registrado com sucesso',
-      user: sanitizeUser(userData)
-    });
-  } catch (error) {
-    console.error('Erro no registro:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor' });
+  async verifyTokenString(idToken: string) {
+    if (!idToken) throw new Error('Token ausente');
+    const decoded = await auth.verifyIdToken(idToken);
+    return decoded; // contém uid, email, etc
   }
-}
+
+  async register(req: Request, res: Response) {
+    try {
+      console.log('Dados recebidos no register:', req.body);
+
+      const { idToken, name, userType, phone, establishmentId } = req.body;
+
+      if (!idToken || !name || !userType) {
+        return res.status(400).json({ error: 'Dados obrigatórios ausentes' });
+      }
+
+      const decodedToken = await auth.verifyIdToken(idToken);
+      const { uid, email } = decodedToken;
+
+      if (!email) {
+        return res.status(400).json({ error: 'Email inválido no token' });
+      }
+
+      const userDoc = await db.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        return res.status(400).json({ error: 'Usuário já existe' });
+      }
+
+      const userData: User = {
+        uid,
+        email,
+        name,
+        userType,
+        phone,
+        establishmentId: establishmentId || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        isActive: true,
+      };
+
+      await db.collection('users').doc(uid).set(userData);
+
+      return res.status(201).json({
+        message: 'Usuário registrado com sucesso',
+        user: sanitizeUser(userData),
+      });
+    } catch (error) {
+      console.error('Erro no registro:', error);
+      return res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
 
   async registerAdmin(req: AuthRequest, res: Response) {
     try {
       const { email, password, name }: RegisterRequest = req.body;
 
       if (req.user?.userType !== UserType.ADMIN) {
-        return res.status(403).json({ error: 'Apenas administradores podem criar outros administradores' });
+        return res
+          .status(403)
+          .json({ error: 'Apenas administradores podem criar outros administradores' });
       }
 
       const usersRef = db.collection('users');
@@ -127,14 +140,14 @@ async register(req: Request, res: Response) {
         userType: UserType.ADMIN,
         createdAt: new Date(),
         updatedAt: new Date(),
-        isActive: true
+        isActive: true,
       };
 
       await db.collection('users').doc(userId).set(newAdmin);
 
       return res.status(201).json({
         message: 'Administrador criado com sucesso',
-        user: sanitizeUser(newAdmin)
+        user: sanitizeUser(newAdmin),
       });
     } catch (error) {
       console.error('Erro ao criar administrador:', error);
@@ -176,14 +189,14 @@ async register(req: Request, res: Response) {
         establishmentId,
         createdAt: new Date(),
         updatedAt: new Date(),
-        isActive: true
+        isActive: true,
       };
 
       await db.collection('users').doc(userId).set(newTechnician);
 
       return res.status(201).json({
         message: 'Técnico criado com sucesso',
-        user: sanitizeUser(newTechnician)
+        user: sanitizeUser(newTechnician),
       });
     } catch (error) {
       console.error('Erro ao criar técnico:', error);
@@ -206,7 +219,7 @@ async register(req: Request, res: Response) {
       const userData = userDoc.data() as User;
 
       return res.json({
-        user: sanitizeUser(userData)
+        user: sanitizeUser(userData),
       });
     } catch (error) {
       console.error('Erro ao buscar usuário atual:', error);
@@ -241,7 +254,7 @@ async register(req: Request, res: Response) {
 
       await userDoc.ref.update({
         password: hashedNewPassword,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
 
       return res.json({ message: 'Senha alterada com sucesso' });
@@ -259,7 +272,9 @@ async register(req: Request, res: Response) {
       const snapshot = await usersRef.where('email', '==', email).get();
 
       // Sempre retorna sucesso, mesmo se o email não existir
-      return res.json({ message: 'Se o email existir, você receberá instruções para redefinir sua senha' });
+      return res.json({
+        message: 'Se o email existir, você receberá instruções para redefinir sua senha',
+      });
     } catch (error) {
       console.error('Erro ao solicitar reset de senha:', error);
       return res.status(500).json({ error: 'Erro interno do servidor' });
@@ -292,4 +307,3 @@ async register(req: Request, res: Response) {
     }
   }
 }
-
