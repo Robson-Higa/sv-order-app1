@@ -3,24 +3,16 @@ import { getDocs, collection, query, where } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // URL do backend no Vercel
-  headers: {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache',
-    Pragma: 'no-cache',
-    Expires: '0',
-  },
+  baseURL: import.meta.env.VITE_API_URL, // pega do .env
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Adiciona token automaticamente
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// Intercepta e adiciona token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
 // Intercepta resposta e trata erro 401
 api.interceptors.response.use(
@@ -36,68 +28,70 @@ api.interceptors.response.use(
   }
 );
 
-export const apiService = {
-  login: (data) => api.post('/auth/login', data),
-  register: (data) => api.post('/auth/register', data),
-  logout: () => api.post('/auth/logout'),
-  changePassword: (currentPassword, newPassword) =>
-    api.patch('/auth/change-password', { currentPassword, newPassword }),
+export default api;
 
-  getUsers: () => api.get('/users'),
-  getTechnicians: () => api.get('/users/technicians'),
-  getEndUsers: () => api.get('/users/type/END_USER'),
-  createUser: (data) => api.post('/users', data),
-  deleteUser: (id) => api.delete(`/users/${id}`),
-  activateUser: (id) => api.patch(`/users/${id}/activate`),
-  getUserById: (uid) => api.get(`/users/${uid}`),
-  updateUser: (uid, data) => api.put(`/users/${uid}`, data),
+export const apiService = {
+  login: (data) => api.post('/api/auth/login', data),
+  register: (data) => api.post('/api/auth/register', data),
+  logout: () => api.post('/api/auth/logout'),
+  changePassword: (currentPassword, newPassword) =>
+    api.patch('/api/auth/change-password', { currentPassword, newPassword }),
+
+  getUsers: () => api.get('/api/users'),
+  getTechnicians: () => api.get('/api/users/technicians'),
+  getEndUsers: () => api.get('/api/users/type/END_USER'),
+  createUser: (data) => api.post('/api/users', data),
+  deleteUser: (id) => api.delete(`/api/users/${id}`),
+  activateUser: (id) => api.patch(`/api/users/${id}/activate`),
+  getUserById: (uid) => api.get(`/api/users/${uid}`),
+  updateUser: (uid, data) => api.put(`/api/users/${uid}`, data),
   uploadAvatar: (formData) =>
-    api.post('/users/avatar', formData, {
+    api.post('/api/users/avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 
-  getEstablishments: () => api.get('/establishments'),
-  createEstablishment: (data) => api.post('/establishments', data),
-  updateEstablishment: (id, data) => api.put(`/establishments/${id}`, data),
-  deleteEstablishment: (id) => api.delete(`/establishments/${id}`),
-  deactivateEstablishment: (id) => api.patch(`/establishments/${id}/deactivate`),
-  activateEstablishment: (id) => api.patch(`/establishments/${id}/activate`),
+  getEstablishments: () => api.get('/api/establishments'),
+  createEstablishment: (data) => api.post('/api/establishments', data),
+  updateEstablishment: (id, data) => api.put(`/api/establishments/${id}`, data),
+  deleteEstablishment: (id) => api.delete(`/api/establishments/${id}`),
+  deactivateEstablishment: (id) => api.patch(`/api/establishments/${id}/deactivate`),
+  activateEstablishment: (id) => api.patch(`/api/establishments/${id}/activate`),
 
-  getSectors: (establishmentId) => api.get(`/establishments/${establishmentId}/sectors`),
+  getSectors: (establishmentId) => api.get(`/api/establishments/${establishmentId}/sectors`),
   createSector: (establishmentId, data) =>
-    api.post(`/establishments/${establishmentId}/sectors`, data),
+    api.post(`/api/establishments/${establishmentId}/sectors`, data),
   updateSector: (establishmentId, sectorId, data) =>
-    api.put(`/establishments/${establishmentId}/sectors/${sectorId}`, data),
+    api.put(`/api/establishments/${establishmentId}/sectors/${sectorId}`, data),
   deleteSector: (establishmentId, sectorId) =>
-    api.delete(`/establishments/${establishmentId}/sectors/${sectorId}`),
+    api.delete(`/api/establishments/${establishmentId}/sectors/${sectorId}`),
 
-  getServiceOrders: (filters = {}) => api.get('/service-orders', { params: filters }),
-  getServiceOrder: (id) => api.get(`/service-orders/${id}`),
-  createServiceOrder: (data) => api.post('/service-orders', data),
-  updateServiceOrder: (id, data) => api.patch(`/service-orders/${id}`, data),
-  deleteServiceOrder: (id) => api.delete(`/service-orders/${id}`),
+  getServiceOrders: (filters = {}) => api.get('/api/service-orders', { params: filters }),
+  getServiceOrder: (id) => api.get(`/api/service-orders/${id}`),
+  createServiceOrder: (data) => api.post('/api/service-orders', data),
+  updateServiceOrder: (id, data) => api.patch(`/api/service-orders/${id}`, data),
+  deleteServiceOrder: (id) => api.delete(`/api/service-orders/${id}`),
   assignTechnician: (id, technicianId) =>
-    api.patch(`/service-orders/${id}/assign`, { technicianId }),
-  updateStatus: (orderId, data) => api.patch(`/service-orders/${orderId}/status`, data),
-  cancelServiceOrder: (id, reason) => api.patch(`/service-orders/${id}/cancel`, { reason }),
-  confirmCompletion: (id) => api.patch(`/service-orders/${id}/confirm`),
+    api.patch(`/api/service-orders/${id}/assign`, { technicianId }),
+  updateStatus: (orderId, data) => api.patch(`/api/service-orders/${orderId}/status`, data),
+  cancelServiceOrder: (id, reason) => api.patch(`/api/service-orders/${id}/cancel`, { reason }),
+  confirmCompletion: (id) => api.patch(`/api/service-orders/${id}/confirm`),
   addFeedback: (id, feedback, rating) =>
-    api.patch(`/service-orders/${id}/feedback`, { feedback, rating }),
+    api.patch(`/api/service-orders/${id}/feedback`, { feedback, rating }),
 
-  getDashboardStats: () => api.get('/dashboard/stats'),
-  getRecentOrders: () => api.get('/dashboard/recent-orders'),
-  getActiveOrders: () => api.get('/dashboard/active-orders'),
-  getServiceOrderStats: () => api.get('/service-orders/stats'),
-  assignSelfToOrder: (id) => api.patch(`/service-orders/${id}/assign-self`),
-  getMonthlyServiceOrderStats: () => api.get('/service-orders/monthly-stats'),
-  getReports: (filters = {}) => api.get('/reports', { params: filters }),
-  getCompletedOrdersByDate: (params) => api.get('/reports/completed-by-date', { params }),
-  getStatusPercentage: (params) => api.get('/reports/status-percentage', { params }),
-  getOrdersByEstablishment: (params) => api.get('/reports/by-establishment', { params }),
-  getOrdersByTechnician: (params) => api.get('/reports/by-technician', { params }),
-  getOrdersReport: (params) => api.get('/reports/orders-report', { params }),
-  getCurrentUser: () => api.get('/users/me'),
-  getTitles: () => api.get('/titles'),
+  getDashboardStats: () => api.get('/api/dashboard/stats'),
+  getRecentOrders: () => api.get('/api/dashboard/recent-orders'),
+  getActiveOrders: () => api.get('/api/dashboard/active-orders'),
+  getServiceOrderStats: () => api.get('/api/service-orders/stats'),
+  assignSelfToOrder: (id) => api.patch(`/api/service-orders/${id}/assign-self`),
+  getMonthlyServiceOrderStats: () => api.get('/api/service-orders/monthly-stats'),
+  getReports: (filters = {}) => api.get('/api/reports', { params: filters }),
+  getCompletedOrdersByDate: (params) => api.get('/api/reports/completed-by-date', { params }),
+  getStatusPercentage: (params) => api.get('/api/reports/status-percentage', { params }),
+  getOrdersByEstablishment: (params) => api.get('/api/reports/by-establishment', { params }),
+  getOrdersByTechnician: (params) => api.get('/api/reports/by-technician', { params }),
+  getOrdersReport: (params) => api.get('/api/reports/orders-report', { params }),
+  getCurrentUser: () => api.get('/api/users/me'),
+  getTitles: () => api.get('/api/titles'),
 };
 
 // Firestore auxiliar

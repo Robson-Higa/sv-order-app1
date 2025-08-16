@@ -15,14 +15,10 @@ export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(() => {
-    const storedToken = localStorage.getItem('token');
-    return storedToken && storedToken !== 'undefined' ? storedToken : null;
-  });
+  const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Função para parse seguro de JSON
   const safeParseJSON = (json) => {
     try {
       return JSON.parse(json);
@@ -31,7 +27,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  /** ===================== LOGIN EMAIL/SENHA ===================== **/
+  /** LOGIN EMAIL/SENHA */
   const login = useCallback(async ({ email, password }) => {
     setLoading(true);
     setError(null);
@@ -41,7 +37,6 @@ export const AuthProvider = ({ children }) => {
       const idToken = await firebaseUser.getIdToken();
 
       const { user: apiUser, token: apiToken } = await apiService.login({ idToken });
-
       if (!apiUser || !apiToken) throw new Error('Resposta inválida do servidor');
 
       localStorage.setItem('user', JSON.stringify(apiUser));
@@ -61,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  /** ===================== LOGIN GOOGLE ===================== **/
+  /** LOGIN GOOGLE */
   const loginWithGoogle = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -72,7 +67,6 @@ export const AuthProvider = ({ children }) => {
       const idToken = await firebaseUser.getIdToken();
 
       const { user: apiUser, token: apiToken } = await apiService.login({ idToken });
-
       if (!apiUser || !apiToken) throw new Error('Resposta inválida do servidor');
 
       localStorage.setItem('user', JSON.stringify(apiUser));
@@ -89,7 +83,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  /** ===================== LOGOUT ===================== **/
+  /** LOGOUT */
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
@@ -102,7 +96,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  /** ===================== OBSERVAÇÃO DO ESTADO DO FIREBASE ===================== **/
+  /** OBSERVAÇÃO DO ESTADO DO FIREBASE */
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -113,7 +107,6 @@ export const AuthProvider = ({ children }) => {
 
           if (!savedUser || !savedToken) {
             const { user: apiUser, token: apiToken } = await apiService.login({ idToken });
-            if (!apiUser || !apiToken) throw new Error('Resposta inválida do servidor');
             localStorage.setItem('user', JSON.stringify(apiUser));
             localStorage.setItem('token', apiToken);
             setUser(apiUser);
