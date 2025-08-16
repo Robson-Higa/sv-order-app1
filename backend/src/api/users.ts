@@ -1,6 +1,6 @@
 import express from 'express';
-import { UserController } from '../src/controllers/UserController';
-import { authenticateToken, requireAdmin } from '../src/middleware/auth';
+import { UserController } from '../../src/controllers/UserController';
+import { authenticateToken, requireAdmin } from '../../src/middleware/auth';
 import multer from 'multer';
 
 const router = express.Router();

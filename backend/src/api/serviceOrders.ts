@@ -1,7 +1,7 @@
 import express from 'express';
-import { ServiceOrderController } from '../src/controllers/ServiceOrderController';
-import { authenticateToken, requireAdmin, requireTechnician } from '../src/middleware/auth';
-import { validateServiceOrder, validateFeedback } from '../src/middleware/validation';
+import { ServiceOrderController } from '../../src/controllers/ServiceOrderController';
+import { authenticateToken, requireAdmin, requireTechnician } from '../../src/middleware/auth';
+import { validateServiceOrder, validateFeedback } from '../../src/middleware/validation';
 
 const router = express.Router();
 const serviceOrderController = new ServiceOrderController();

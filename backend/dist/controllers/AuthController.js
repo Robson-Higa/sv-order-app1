@@ -80,6 +80,7 @@ class AuthController {
             res.status(500).json({ error: 'Erro interno do servidor' });
         }
     }
+    
     async registerAdmin(req, res) {
         try {
             const { email, password, name } = req.body;

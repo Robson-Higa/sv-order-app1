@@ -3,41 +3,34 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
 
-// Importar rotas
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import establishmentRoutes from './routes/establishments';
 import serviceOrderRoutes from './routes/serviceOrders';
 import dashboardRoutes from './routes/dashboard';
-import tokenRoutes from './routes/auth';
 import reportRoutes from './routes/report';
 import titleRoutes from './routes/titles';
 import sectorRoutes from './routes/sectors';
 import whatsappRoutes from './routes/whatsappRoutes';
-import { ServiceOrderController } from './controllers/ServiceOrderController';
 import publicRoutes from './routes/publicRoutes';
+import { ServiceOrderController } from './controllers/ServiceOrderController';
 
-import path from 'path';
+import { VercelRequest, VercelResponse } from '@vercel/node';
 
 dotenv.config();
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000; // Changed default port to 3001 to avoid conflict
-
 const serviceOrderController = new ServiceOrderController();
+
+// CORS configurável via .env
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+app.use(cors({ origin: frontendUrl, credentials: true }));
 
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-  })
-);
-
-// CORS configurado para permitir acesso do frontend
-app.use(
-  cors({
-    origin: 'http://localhost:5173', // ou '*' para liberar geral (não recomendado em produção)
-    credentials: true,
   })
 );
 
@@ -47,14 +40,15 @@ app.use('/images', express.static(path.join(__dirname, '../public/images')));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging
+// Logging em dev
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
-//public routes
+
+// Rotas públicas
 app.use('/api', publicRoutes);
 
-//app.use('/api/auth', tokenRoutes);
+// Rotas principais
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/establishments', establishmentRoutes);
@@ -65,7 +59,7 @@ app.use('/api/titles', titleRoutes);
 app.use('/api', sectorRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 
-// Rota de health check
+// Health check
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -113,18 +107,24 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Rota não encontrada' });
 });
 
+// Middleware de cache-control
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
 
-//app.post('/api/service-orders/update-lowercase', serviceOrderController.updateAllServiceOrdersHandler);
+// Opcional: endpoint para atualizar service orders em lowercase
+// app.post('/api/service-orders/update-lowercase', serviceOrderController.updateAllServiceOrdersHandler);
 
-// Iniciar servidor
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`📱 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 URL: http://localhost:${PORT}`);
-});
+// Somente para dev local: iniciar servidor tradicional
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = Number(process.env.PORT) || 3000;
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`📱 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 URL: http://localhost:${PORT}`);
+  });
+}
 
-export default app;
+// Export serverless para Vercel
+export default (req: VercelRequest, res: VercelResponse) => app(req, res);

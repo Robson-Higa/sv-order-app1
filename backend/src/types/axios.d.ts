@@ -1,4 +1,4 @@
-// Custom type definition for axios
+// src/types/axios.d.ts
 declare module 'axios' {
   export interface AxiosRequestConfig {
     url?: string;
@@ -54,26 +54,8 @@ declare module 'axios' {
     request<T = any>(config: AxiosRequestConfig): Promise<AxiosResponse<T>>;
   }
 
-  export interface AxiosStatic extends AxiosInstance {
-    create(config?: AxiosRequestConfig): AxiosInstance;
-    Cancel: CancelStatic;
-    CancelToken: CancelTokenStatic;
-    isCancel(value: any): boolean;
-    all<T>(values: (T | Promise<T>)[]): Promise<T[]>;
-    spread<T, R>(callback: (...args: T[]) => R): (array: T[]) => R;
-  }
-
-  export interface CancelStatic {
-    new(message?: string): Cancel;
-  }
-
   export interface Cancel {
     message: string;
-  }
-
-  export interface CancelTokenStatic {
-    new(executor: (cancel: (message?: string) => void) => void): CancelToken;
-    source(): CancelTokenSource;
   }
 
   export interface CancelToken {
@@ -87,14 +69,19 @@ declare module 'axios' {
     cancel: (message?: string) => void;
   }
 
-  const axios: AxiosStatic;
-  export default axios;
+  export interface CancelTokenStatic {
+    new (executor: (cancel: (message?: string) => void) => void): CancelToken;
+    source(): CancelTokenSource;
+  }
+
+  export interface CancelStatic {
+    new (message?: string): Cancel;
   }
 
   export interface AxiosStatic extends AxiosInstance {
     create(config?: AxiosRequestConfig): AxiosInstance;
-    Cancel: any;
-    CancelToken: any;
+    Cancel: CancelStatic;
+    CancelToken: CancelTokenStatic;
     isCancel(value: any): boolean;
     all<T>(values: (T | Promise<T>)[]): Promise<T[]>;
     spread<T, R>(callback: (...args: T[]) => R): (array: T[]) => R;

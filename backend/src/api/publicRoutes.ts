@@ -5,7 +5,7 @@ import {
   publicRegister,
   googleLoginRedirect,
   googleLoginCallback,
-} from '../src/controllers/publicAuthController';
+} from '../../src/controllers/publicAuthController';
 
 const router = Router();
 

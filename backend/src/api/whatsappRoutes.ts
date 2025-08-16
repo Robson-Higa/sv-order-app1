@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import whatsappService from '../src/services/whatsappService';
-import { db } from '../src/config/firebase';
-import { ServiceOrderStatus } from '../src/types';
+import whatsappService from '../../src/services/whatsappService';
+import { db } from '../../src/config/firebase';
+import { ServiceOrderStatus } from '../../src/types';
 
 const router = Router();
 

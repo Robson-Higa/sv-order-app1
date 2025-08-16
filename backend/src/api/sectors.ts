@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { SectorController } from '../src/controllers/SectorController';
-import { authenticateToken, requireAdmin } from '../src/middleware/auth';
+import { SectorController } from '../../src/controllers/SectorController';
+import { authenticateToken, requireAdmin } from '../../src/middleware/auth';
 
 const router = Router();
 
