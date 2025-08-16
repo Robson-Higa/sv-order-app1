@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es2017",
+    "target": "ES2020",
     "module": "commonjs",
-    "lib": ["es2017"],
-    "rootDir": "src",
-    "outDir": "dist",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -31,20 +31,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": [
-    "src/**/*",
-    "api",
-    "api/auth.ts",
-    "api/dashboard.ts",
-    "api/establishments.ts",
-    "api/publicAuth.ts",
-    "api/publicRoutes.ts",
-    "api/report.ts",
-    "api/sectors.ts",
-    "api/serviceOrders.ts",
-    "api/titles.ts",
-    "api/users.ts",
-    "api/whatsappRoutes.ts"
-  ],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

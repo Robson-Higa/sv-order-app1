@@ -4,7 +4,6 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  root: path.resolve(__dirname),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -30,9 +29,5 @@ export default defineConfig({
   build: {
     sourcemap: true,
     chunkSizeWarningLimit: 1000,
-    outDir: 'dist', // pasta de saída padrão para Vercel
-    rollupOptions: {
-      input: path.resolve(__dirname, 'index.html'), // garante que o Vite ache o index.html
-    },
   },
 });
