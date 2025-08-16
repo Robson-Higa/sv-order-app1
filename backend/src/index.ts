@@ -5,18 +5,17 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 
 // Importar rotas
-import authRoutes from '../api/auth';
-import userRoutes from '../api/users';
-import establishmentRoutes from '../api/establishments';
-import serviceOrderRoutes from '../api/serviceOrders';
-import dashboardRoutes from '../api/dashboard';
-import tokenRoutes from '../api/auth';
-import reportRoutes from '../api/report';
-import titleRoutes from '../api/titles';
-import sectorRoutes from '../api/sectors';
-import whatsappRoutes from '../api/whatsappRoutes';
+import authRoutes from '../src/api/auth';
+import userRoutes from '../src/api/users';
+import establishmentRoutes from '../src/api/establishments';
+import serviceOrderRoutes from '../src/api/serviceOrders';
+import dashboardRoutes from '../src/api/dashboard';
+import reportRoutes from '../src/api/report';
+import titleRoutes from '../src/api/titles';
+import sectorRoutes from '../src/api/sectors';
+import whatsappRoutes from '../src/api/whatsappRoutes';
 import { ServiceOrderController } from './controllers/ServiceOrderController';
-import publicRoutes from '../api/publicRoutes';
+import publicRoutes from '../src/api/publicRoutes';
 
 import path from 'path';
 
