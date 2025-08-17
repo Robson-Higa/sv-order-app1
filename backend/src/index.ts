@@ -24,9 +24,21 @@ dotenv.config();
 const app = express();
 const serviceOrderController = new ServiceOrderController();
 
-// CORS configurável via .env
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-app.use(cors({ origin: frontendUrl, credentials: true }));
+const allowedOrigins = [
+  ...(process.env.ALLOWED_ORIGINS?.split(',') || []),
+  process.env.FRONTEND_URL,
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // Postman / apps móveis
+      if (allowedOrigins.includes(origin)) callback(null, true);
+      else callback(new Error('CORS não permitido para este origin: ' + origin));
+    },
+    credentials: true,
+  })
+);
 
 app.use(
   helmet({
